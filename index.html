@@ -27,7 +27,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -44,23 +44,15 @@
       <div class="glow-orb glow-orb-3"></div>
     </div>
 
-    <!-- Unified Top Header Bar (Single Clean Layer) -->
-    <header class="app-header">
-      <div class="header-brand">
-        <h1 class="header-logo" id="page-main-title">Music Library</h1>
-        <span class="header-song-count" id="library-count">0 Songs</span>
-      </div>
-      <div class="header-actions">
-        <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">➕ Import Lagu</button>
-        <input type="file" id="file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac,.ogg,.opus,.webm,.3gp,.3g2,.amr,.wma" multiple style="display: none;">
-      </div>
-    </header>
-
     <!-- Main View Tabs Container -->
     <main class="views-container">
 
       <!-- TAB 1: Transfer & Import -->
       <section class="tab-view" id="tab-transfer">
+        <div class="page-title-row">
+          <h1 class="page-title">Wi-Fi Import</h1>
+        </div>
+
         <div class="p2p-card">
           <h3>iPhone Receiver Mode</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
@@ -98,6 +90,14 @@
 
       <!-- TAB 2: Library (DEFAULT HOME TAB) -->
       <section class="tab-view active" id="tab-library">
+        <div class="page-title-row">
+          <div class="page-title-group">
+            <h1 class="page-title">Music Library</h1>
+            <span class="page-subtitle" id="library-count">0 Songs</span>
+          </div>
+          <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">➕ Import Lagu</button>
+          <input type="file" id="file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac,.ogg,.opus,.webm,.3gp,.3g2,.amr,.wma" multiple style="display: none;">
+        </div>
 
         <!-- Multi-Select Action Bar (Hidden by default) -->
         <div class="multi-select-bar" id="library-multi-select-bar" style="display: none;">
@@ -150,8 +150,8 @@
       <section class="tab-view" id="tab-playlists">
         <!-- Main Playlist List View -->
         <div id="playlists-main-view">
-          <div class="section-header">
-            <h1 class="section-title">Playlists</h1>
+          <div class="page-title-row">
+            <h1 class="page-title">Playlists</h1>
             <button class="icon-btn" id="btn-create-playlist" title="New Playlist">➕</button>
           </div>
 
@@ -190,8 +190,8 @@
 
       <!-- TAB 5: Settings / Equalizer -->
       <section class="tab-view" id="tab-settings">
-        <div class="section-header">
-          <h1 class="section-title">Settings & Audio FX</h1>
+        <div class="page-title-row">
+          <h1 class="page-title">Equalizer & FX</h1>
         </div>
 
         <div class="p2p-card" style="text-align: left;">
@@ -474,7 +474,7 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=33"></script>
+  <script type="module" src="app.js?v=34"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

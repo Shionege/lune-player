@@ -132,15 +132,6 @@ function initTabNavigation() {
   const dockItems = document.querySelectorAll('.dock-item');
   const tabViews = document.querySelectorAll('.tab-view');
   const heroOrb = document.getElementById('dock-hero-orb');
-  const mainTitleEl = document.getElementById('page-main-title');
-  const countEl = document.getElementById('library-count');
-
-  const tabTitles = {
-    'tab-library': 'Music Library',
-    'tab-playlists': 'Playlists',
-    'tab-transfer': 'Wi-Fi Import',
-    'tab-settings': 'Equalizer'
-  };
 
   dockItems.forEach((item) => {
     item.addEventListener('click', () => {
@@ -158,13 +149,6 @@ function initTabNavigation() {
           view.classList.remove('active');
         }
       });
-
-      if (mainTitleEl && tabTitles[targetTabId]) {
-        mainTitleEl.textContent = tabTitles[targetTabId];
-      }
-      if (countEl) {
-        countEl.style.display = (targetTabId === 'tab-library') ? 'inline-block' : 'none';
-      }
     });
   });
 
@@ -177,7 +161,7 @@ function initTabNavigation() {
       openNowPlayingSheet();
     }
   });
-
+}
   document.getElementById('btn-open-now-playing-sheet').addEventListener('click', () => {
     openNowPlayingSheet();
   });
