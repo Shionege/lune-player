@@ -38,6 +38,7 @@ class MusicStorage {
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
+        this.requestPersistentStorage().catch(() => {});
         resolve(this.db);
       };
 
@@ -207,15 +208,20 @@ class MusicStorage {
     });
   }
 
-  async clearAllData() {
-    await this.ensureDB();
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(['songs', 'playlists'], 'readwrite');
-      tx.objectStore('songs').clear();
-      tx.objectStore('playlists').clear();
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = (e) => reject(e.target.error);
-    });
+  async requestPersistentStorage() {
+    if (navigator.storage && navigator.storage.persist) {
+      try {
+        const isPersisted = await navigator.storage.persisted();
+        if (!isPersisted) {
+          const granted = await navigator.storage.persist();
+          console.log(`[Storage] Persistent storage granted: ${granted}`);
+        } else {
+          console.log(`[Storage] Storage is already persistent.`);
+        }
+      } catch (err) {
+        console.warn("[Storage] Storage persistence check failed:", err);
+      }
+    }
   }
 }
 
