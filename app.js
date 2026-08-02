@@ -1020,7 +1020,18 @@ function initSheetControls() {
   const volumeSlider = document.getElementById('sheet-volume-slider');
 
   if (btnClose) btnClose.addEventListener('click', () => closeNowPlayingSheet());
-  if (sheetDragHandle) sheetDragHandle.addEventListener('click', () => closeNowPlayingSheet());
+  if (sheetDragHandle) {
+    sheetDragHandle.addEventListener('click', () => closeNowPlayingSheet());
+    let startY = 0;
+    sheetDragHandle.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    sheetDragHandle.addEventListener('touchmove', (e) => {
+      if (e.touches[0].clientY - startY > 40) {
+        closeNowPlayingSheet();
+      }
+    }, { passive: true });
+  }
 
   if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
