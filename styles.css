@@ -169,28 +169,22 @@ html, body {
 
 .header-brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .header-logo {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.7) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
+  margin: 0;
 }
 
-.header-badge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 20px;
-  background: rgba(94, 92, 230, 0.25);
-  color: #a5a3ff;
-  border: 1px solid rgba(94, 92, 230, 0.4);
+.header-song-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .header-actions {

@@ -27,7 +27,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=32">
+  <link rel="stylesheet" href="styles.css?v=33">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -44,14 +44,13 @@
       <div class="glow-orb glow-orb-3"></div>
     </div>
 
-    <!-- Header Bar -->
+    <!-- Unified Top Header Bar (Single Clean Layer) -->
     <header class="app-header">
       <div class="header-brand">
-        <span class="header-logo">Anywhere</span>
-        <span class="header-badge">Offline PWA</span>
+        <h1 class="header-logo" id="page-main-title">Music Library</h1>
+        <span class="header-song-count" id="library-count">0 Songs</span>
       </div>
       <div class="header-actions">
-        <button class="header-action-pill" id="btn-generate-demo" title="Generate Demo Tracks">✨ Demo</button>
         <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">➕ Import Lagu</button>
         <input type="file" id="file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac,.ogg,.opus,.webm,.3gp,.3g2,.amr,.wma" multiple style="display: none;">
       </div>
@@ -62,10 +61,6 @@
 
       <!-- TAB 1: Transfer & Import -->
       <section class="tab-view" id="tab-transfer">
-        <div class="section-header">
-          <h1 class="section-title">Wi-Fi P2P Transfer</h1>
-        </div>
-
         <div class="p2p-card">
           <h3>iPhone Receiver Mode</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
@@ -103,10 +98,6 @@
 
       <!-- TAB 2: Library (DEFAULT HOME TAB) -->
       <section class="tab-view active" id="tab-library">
-        <div class="section-header">
-          <h1 class="section-title">Music Library</h1>
-          <span style="font-size: 13px; color: var(--text-muted);" id="library-count">0 Songs</span>
-        </div>
 
         <!-- Multi-Select Action Bar (Hidden by default) -->
         <div class="multi-select-bar" id="library-multi-select-bar" style="display: none;">
@@ -483,7 +474,7 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=32"></script>
+  <script type="module" src="app.js?v=33"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
