@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#050507">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Anywhere">
+
+  <title>Anywhere - Offline Music Player</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- 0ms White Screen Instant Dark Flash Prevention -->
+  <style>
+    html, body {
+      background-color: #050507 !important;
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+
+  <link rel="stylesheet" href="styles.css?v=25">
+
+  <!-- Third-party CDNs with offline fallbacks -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+  <div id="app-root">
+
+    <!-- Ambient Glowing Background Orbs -->
+    <div class="ambient-glow-container">
+      <div class="glow-orb glow-orb-1"></div>
+      <div class="glow-orb glow-orb-2"></div>
+      <div class="glow-orb glow-orb-3"></div>
+    </div>
+
+    <!-- Header Bar -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="header-logo">Anywhere</span>
+        <span class="header-badge">Offline PWA</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-action-pill" id="btn-generate-demo" title="Generate Demo Tracks">✨ Demo</button>
+        <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">➕ Import Lagu</button>
+        <input type="file" id="file-input" accept="audio/*" multiple style="display: none;">
+      </div>
+    </header>
+
+    <!-- Main View Tabs Container -->
+    <main class="views-container">
+
+      <!-- TAB 1: Transfer & Import -->
+      <section class="tab-view" id="tab-transfer">
+        <div class="section-header">
+          <h1 class="section-title">Wi-Fi P2P Transfer</h1>
+        </div>
+
+        <div class="p2p-card">
+          <h3>iPhone Receiver Mode</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+            Open app on Laptop, select Transfer, and enter this 6-digit PIN:
+          </p>
+
+          <div class="pin-display" id="receiver-pin">------</div>
+
+          <div class="progress-bar-container" id="p2p-progress-container" style="display: none;">
+            <div class="progress-bar-fill" id="p2p-progress-fill"></div>
+          </div>
+          <div id="p2p-status-text" style="font-size: 13px; color: var(--text-muted);">
+            Ready to receive music directly over local Wi-Fi.
+          </div>
+        </div>
+
+        <div class="p2p-card">
+          <h3>Laptop Sender Mode</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+            Enter target PIN generated on iPhone:
+          </p>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <input type="text" id="target-pin-input" class="search-input" placeholder="e.g. 784920" maxlength="6" style="text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 4px;">
+            <button class="btn-primary" id="btn-connect-pin" style="white-space: nowrap;">Connect</button>
+          </div>
+
+          <div class="drop-zone" id="p2p-send-dropzone" style="display: none;">
+            <div style="font-size: 28px; margin-bottom: 8px;">📲 ➔ 🎵</div>
+            <div style="font-weight: 600; font-size: 14px;">Connected! Click or Drag MP3 to Transfer</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Transfers directly without cloud upload</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Library (DEFAULT HOME TAB) -->
+      <section class="tab-view active" id="tab-library">
+        <div class="section-header">
+          <h1 class="section-title">Music Library</h1>
+          <span style="font-size: 13px; color: var(--text-muted);" id="library-count">0 Songs</span>
+        </div>
+
+        <!-- Multi-Select Action Bar (Hidden by default) -->
+        <div class="multi-select-bar" id="library-multi-select-bar" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn-secondary pill-sm" id="btn-cancel-multi-select">Batal</button>
+            <span style="font-size: 13px; font-weight: 700; color: #fff;" id="multi-select-count">0 Terpilih</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary pill-sm" id="btn-select-all-library">Pilih Semua</button>
+            <button class="btn-primary pill-sm" id="btn-delete-selected-library" style="background: linear-gradient(135deg, #ff2d55, #ff3b30);">🗑️ Hapus</button>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-library-input" class="search-input" placeholder="Search title, artist, album...">
+        </div>
+
+        <div class="filter-chips">
+          <div class="chip active" data-filter="all">All Songs</div>
+          <div class="chip" data-filter="favorites">Favorites</div>
+          <div class="chip" data-filter="artists">Artists</div>
+          <div class="chip" data-filter="albums">Albums</div>
+        </div>
+
+        <div class="song-list" id="library-song-list">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="empty-state" id="library-empty" style="display: none;">
+          <div class="empty-icon">🎵</div>
+          <div class="empty-text">No music in your offline library yet.</div>
+          <button class="btn-primary" id="btn-empty-import">Import / Generate Demo</button>
+        </div>
+      </section>
+
+      <!-- TAB 3: Center Hero Orb View -->
+      <section class="tab-view" id="tab-nowplaying">
+        <div class="section-header">
+          <h1 class="section-title">Now Playing</h1>
+        </div>
+        <div class="empty-state">
+          <div class="empty-icon">🔮</div>
+          <div class="empty-text">Tap the Center Glowing Orb below to open full player sheet!</div>
+          <button class="btn-primary" id="btn-open-now-playing-sheet">Open Player Sheet</button>
+        </div>
+      </section>
+
+      <!-- TAB 4: Playlists & Favorites -->
+      <section class="tab-view" id="tab-playlists">
+        <!-- Main Playlist List View -->
+        <div id="playlists-main-view">
+          <div class="section-header">
+            <h1 class="section-title">Playlists</h1>
+            <button class="icon-btn" id="btn-create-playlist" title="New Playlist">➕</button>
+          </div>
+
+          <div class="song-list" id="playlists-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- FULL-PAGE PROPER PLAYLIST DETAIL VIEW (1:1 APPLE MUSIC LAYOUT) -->
+        <div id="playlists-detail-fullview" style="display: none;">
+          <div class="section-header" style="margin-bottom: 12px;">
+            <button class="btn-secondary" id="btn-back-playlist-detail" style="padding: 6px 14px; font-size: 13px;">
+              ← Kembali
+            </button>
+            <span style="font-size: 13px; color: var(--text-muted);" id="detail-fullview-count">0 Songs</span>
+          </div>
+
+          <div class="ios-hero-row" style="margin-bottom: 20px;">
+            <div class="ios-art-block">
+              <img class="ios-hero-thumb" id="detail-fullview-art" alt="">
+            </div>
+            <div class="ios-title-block" style="justify-content: center;">
+              <h2 id="detail-fullview-title" style="font-size: 22px; font-weight: 800; color: #ffffff;">Playlist Title</h2>
+              <p style="font-size: 12px; color: var(--text-muted); letter-spacing: 1px; margin-top: 4px;">PLAYLIST</p>
+              <button class="btn-primary" id="btn-play-all-fullview" style="margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px;">
+                ▶ Play All
+              </button>
+            </div>
+          </div>
+
+          <div class="song-list" id="detail-fullview-song-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Settings / Equalizer -->
+      <section class="tab-view" id="tab-settings">
+        <div class="section-header">
+          <h1 class="section-title">Settings & Audio FX</h1>
+        </div>
+
+        <div class="p2p-card" style="text-align: left;">
+          <h3>Offline Storage Status</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="storage-status-text">
+            IndexedDB status: Active (100% Offline)
+          </p>
+        </div>
+
+        <div class="p2p-card" style="text-align: left;">
+          <h3>App Information</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;">
+            Anywhere PWA v1.0.0<br>
+            Designed for iOS & Cross-Platform Offline Music Playback.
+          </p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Floating Glass Mini Player (PROPER HIGH Z-INDEX 1100 FLOATING ABOVE DOCK) -->
+    <div class="floating-mini-player" id="floating-mini-player">
+      <img class="mini-art" id="mini-art-img" alt="">
+      <div class="mini-info">
+        <div class="mini-title-row">
+          <span class="mini-title" id="mini-song-title">Pilih Lagu</span>
+          <span class="explicit-badge" id="mini-explicit-badge" style="display: none;">E</span>
+        </div>
+        <div class="mini-artist" id="mini-song-artist">Anywhere Offline Player</div>
+      </div>
+      <div class="mini-controls">
+        <button class="action-btn" id="mini-btn-play">▶</button>
+        <button class="action-btn" id="mini-btn-next">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Floating Navigation Dock (Fixed 1000 z-index) -->
+    <nav class="floating-nav-dock">
+      <div class="dock-item" data-tab="tab-transfer" title="Import / P2P">
+        <span class="dock-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <div class="dock-dot"></div>
+      </div>
+
+      <div class="dock-item active" data-tab="tab-library" title="Library">
+        <span class="dock-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        </span>
+        <div class="dock-dot"></div>
+      </div>
+
+      <!-- Center Hero Glowing Wave Orb Button 🔮 -->
+      <div class="center-hero-orb" id="dock-hero-orb" title="Toggle Player Sheet">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="14" fill="url(#orbGrad)"/>
+          <path d="M8 17 C 12 12, 20 22, 24 15" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="orbGrad" x1="0" y1="0" x2="32" y2="32">
+              <stop offset="0%" stop-color="#37ecba"/>
+              <stop offset="50%" stop-color="#a6c0fe"/>
+              <stop offset="100%" stop-color="#f68084"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <div class="dock-item" data-tab="tab-playlists" title="Playlists">
+        <span class="dock-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </span>
+        <div class="dock-dot"></div>
+      </div>
+
+      <div class="dock-item" data-tab="tab-settings" title="Settings / EQ">
+        <span class="dock-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        </span>
+        <div class="dock-dot"></div>
+      </div>
+    </nav>
+
+    <!-- Now Playing Slide-Up Sheet Overlay -->
+    <div class="now-playing-sheet" id="now-playing-sheet">
+      <div class="sheet-drag-handle" id="sheet-close-handle"></div>
+
+      <div class="sheet-header">
+        <button class="ctrl-btn" id="btn-close-sheet" style="font-size: 22px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sheet-title-group">
+          <div class="sheet-playlist-title" id="sheet-header-playlist">Anywhere Player</div>
+          <div class="sheet-playlist-subtitle" id="sheet-header-subtitle">NOW PLAYING</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="ctrl-btn" id="btn-toggle-eq-panel" title="Equalizer Sliders">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-sheet-queue" title="Toggle Up Next Queue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm15-2l-3-3v2h-4v2h4v2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expandable Sleek Glassmorphic Equalizer Panel inside Player Sheet -->
+      <div class="sheet-eq-panel" id="sheet-eq-panel" style="display: none;">
+        <div class="section-header" style="margin-bottom: 10px;">
+          <h4 style="font-size: 14px; font-weight: 700; color: #ffffff;">5-Band Equalizer</h4>
+        </div>
+        <div class="filter-chips" style="margin-bottom: 12px;">
+          <div class="chip active" data-preset="flat">Flat</div>
+          <div class="chip" data-preset="bass">Bass Boost</div>
+          <div class="chip" data-preset="pop">Pop</div>
+          <div class="chip" data-preset="rock">Rock</div>
+          <div class="chip" data-preset="vocal">Vocal</div>
+        </div>
+
+        <div class="eq-slider-group">
+          <div class="eq-label-row"><span>60 Hz</span><span id="eq-val-0">0 dB</span></div>
+          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="0">
+        </div>
+        <div class="eq-slider-group">
+          <div class="eq-label-row"><span>230 Hz</span><span id="eq-val-1">0 dB</span></div>
+          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="1">
+        </div>
+        <div class="eq-slider-group">
+          <div class="eq-label-row"><span>910 Hz</span><span id="eq-val-2">0 dB</span></div>
+          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="2">
+        </div>
+        <div class="eq-slider-group">
+          <div class="eq-label-row"><span>3.6 kHz</span><span id="eq-val-3">0 dB</span></div>
+          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="3">
+        </div>
+        <div class="eq-slider-group">
+          <div class="eq-label-row"><span>14 kHz</span><span id="eq-val-4">0 dB</span></div>
+          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="4">
+        </div>
+      </div>
+
+      <!-- FIXED 310PX HEIGHT MIDDLE CONTAINER -->
+      <div class="player-middle-container" id="player-middle-container">
+        <!-- MODE A: 3D Carousel Album Cards -->
+        <div class="carousel-view-wrapper" id="carousel-view-wrapper">
+          <div class="album-carousel-container">
+            <img class="carousel-card left" id="carousel-left" alt="">
+            <img class="carousel-card center" id="carousel-center" alt="">
+            <img class="carousel-card right" id="carousel-right" alt="">
+          </div>
+        </div>
+
+        <!-- MODE B: Up Next Queue Tracklist View -->
+        <div class="queue-view-wrapper" id="queue-view-wrapper" style="display: none;">
+          <div class="queue-header-label">UP NEXT</div>
+          <div class="song-list" id="sheet-queue-song-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Song Meta (CENTER ALIGNED) -->
+      <div class="song-meta-group">
+        <div class="meta-text-col">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
+            <h2 class="sheet-song-title" id="sheet-song-title">Belum Ada Lagu</h2>
+            <span class="explicit-badge" id="sheet-explicit-badge" style="display: none;">E</span>
+          </div>
+          <p class="sheet-song-artist" id="sheet-song-artist">Pilih lagu dari library atau buat demo</p>
+        </div>
+        <!-- Absolute positioned favorite heart button on the right edge -->
+        <button class="sheet-favorite-btn-meta" id="sheet-btn-favorite" title="Favorite">♡</button>
+      </div>
+
+      <!-- Custom Seekbar with Interactive Drag Animations -->
+      <div class="seekbar-container">
+        <div class="seekbar-track" id="seekbar-track">
+          <div class="seekbar-fill" id="seekbar-fill"></div>
+          <div class="seekbar-thumb" id="seekbar-thumb"></div>
+        </div>
+        <div class="seekbar-time-row">
+          <span id="time-elapsed">2:15</span>
+          <span id="time-remaining">-1:30</span>
+        </div>
+      </div>
+
+      <!-- Symmetrical Main Controls Bar (5 buttons: shuffle, prev, play-pause, next, repeat) -->
+      <div class="sheet-main-controls">
+        <button class="ctrl-btn" id="sheet-btn-shuffle" title="Shuffle Mode">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+        </button>
+
+        <button class="ctrl-btn" id="sheet-btn-prev" title="Previous Track">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+
+        <button class="ctrl-btn play-pause-lg" id="sheet-btn-play" title="Play/Pause">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" id="sheet-play-svg-icon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+
+        <button class="ctrl-btn" id="sheet-btn-next" title="Next Track">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+
+        <button class="ctrl-btn" id="sheet-btn-repeat" title="Repeat Mode">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23 3 19l4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+      </div>
+
+      <!-- Volume Control Bar Row -->
+      <div class="sheet-volume-row">
+        <span class="volume-icon">🔈</span>
+        <input type="range" min="0" max="1" step="0.01" value="1" class="volume-slider" id="sheet-volume-slider">
+        <span class="volume-icon">🔊</span>
+      </div>
+    </div>
+
+    <!-- Create Playlist Modal (1:1 APPLE MUSIC FULL-SCREEN SLIDE-UP) -->
+    <div class="modal-overlay full-screen-slide" id="modal-create-playlist">
+      <div class="modal-card ios-playlist-modal-card">
+        
+        <!-- Header Top Bar (Cancel Left, Title Center, Create Right) -->
+        <div class="ios-modal-header">
+          <button class="btn-secondary pill-sm" id="btn-cancel-playlist">Cancel</button>
+          <div class="ios-modal-title" id="create-playlist-header-title">Untitled Playlist</div>
+          <button class="btn-primary pill-sm" id="btn-save-playlist">Create</button>
+        </div>
+
+        <div class="modal-body" style="padding: 16px 0;">
+          
+          <!-- Hero Block (Cover Left + Title Right) -->
+          <div class="ios-hero-row">
+            <div class="ios-art-block" id="btn-trigger-cover-picker">
+              <img class="ios-hero-thumb" id="create-playlist-cover-img" alt="" style="display: none;">
+              <div class="ios-art-placeholder" id="create-playlist-art-placeholder">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+              </div>
+              <span class="ios-caption">tap to edit</span>
+            </div>
+
+            <div class="ios-title-block">
+              <input type="text" id="playlist-name-input" class="ios-title-input" placeholder="Untitled Playlist" value="Untitled Playlist">
+              <span class="ios-caption">tap to edit</span>
+            </div>
+          </div>
+
+          <!-- Cover Art Selector Options (Expandable) -->
+          <div class="playlist-cover-picker" id="playlist-cover-picker" style="display: none; margin-bottom: 14px;">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Add Music Action Row (⊕ Add Music...) -->
+          <div class="ios-add-music-btn" id="btn-trigger-add-music">
+            <div class="ios-add-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </div>
+            <span class="ios-add-text">Add Music...</span>
+          </div>
+
+          <!-- Track Checklist Selector -->
+          <div class="modal-song-selector" id="playlist-track-checklist" style="display: none; margin-top: 14px;">
+            <!-- Track checkboxes -->
+          </div>
+
+          <!-- Preview List of Selected Tracks -->
+          <div class="song-list" id="create-selected-songs-preview" style="margin-top: 14px;">
+            <!-- Rendered selected tracks -->
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- App Main Logic -->
+  <script type="module" src="app.js?v=25"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=23').catch(err => console.log('SW Reg failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
