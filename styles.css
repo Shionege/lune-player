@@ -847,32 +847,28 @@ html, body {
   box-shadow: 0 0 15px rgba(166, 192, 254, 0.4);
 }
 
-/* Clean Integrated Mini Player (No Bubble Border, Full Width Edge-to-Edge) */
+/* Modern Floating Glass Mini Player Widget (Clears Center Hero Orb) */
 .floating-mini-player {
   position: absolute;
-  bottom: calc(var(--nav-dock-height) + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 56px;
-  background: rgba(22, 18, 32, 0.96);
+  bottom: calc(var(--nav-dock-height) + 20px + env(safe-area-inset-bottom, 0px));
+  left: 12px;
+  right: 12px;
+  height: 60px;
+  background: rgba(26, 20, 38, 0.94);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: none;
-  border-left: none;
-  border-right: none;
-  border-radius: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
   display: none; /* DISPLAY NONE BY DEFAULT WHEN UNPLAYED */
   align-items: center;
-  padding: 6px 16px;
-  gap: 12px;
+  padding: 6px 12px;
+  gap: 10px;
   z-index: 1100;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.75), 0 0 20px rgba(94, 92, 230, 0.25);
   cursor: pointer;
   transform: translateY(20px);
   opacity: 0;
-  transition: transform 0.3s ease, opacity 0.25s ease;
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
 }
 
 .floating-mini-player.visible {

@@ -1,9 +1,9 @@
-const CACHE_NAME = 'anywhere-pwa-v31';
+const CACHE_NAME = 'anywhere-pwa-v32';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './styles.css?v=31',
-  './app.js?v=31',
+  './styles.css?v=32',
+  './app.js?v=32',
   './storage.js',
   './metadata.js',
   './player.js',
