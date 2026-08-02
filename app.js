@@ -309,11 +309,24 @@ function renderLibrarySongs() {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const songId = btn.dataset.id;
-      const isFav = await musicStorage.toggleFavorite(songId);
-      const songObj = allSongs.find((s) => s.id === songId);
-      if (songObj) songObj.isFavorite = isFav;
-      applyFilterAndSearch();
-      await renderPlaylists();
+      try {
+        const isFav = await musicStorage.toggleFavorite(songId);
+        const songObj = allSongs.find((s) => String(s.id) === String(songId));
+        if (songObj) songObj.isFavorite = isFav;
+        const currentSong = playerEngine.getCurrentSong();
+        if (currentSong && String(currentSong.id) === String(songId)) {
+          currentSong.isFavorite = isFav;
+          const sheetFavBtn = document.getElementById('sheet-btn-favorite');
+          if (sheetFavBtn) {
+            sheetFavBtn.textContent = isFav ? '♥' : '♡';
+            sheetFavBtn.classList.toggle('active', isFav);
+          }
+        }
+        applyFilterAndSearch();
+        await renderPlaylists();
+      } catch (err) {
+        console.warn("Toggle favorite error:", err);
+      }
     });
   });
 
@@ -1079,12 +1092,18 @@ function initSheetControls() {
     btnFavorite.addEventListener('click', async () => {
       const current = playerEngine.getCurrentSong();
       if (!current) return;
-      const isFav = await musicStorage.toggleFavorite(current.id);
-      current.isFavorite = isFav;
-      btnFavorite.textContent = isFav ? '♥' : '♡';
-      btnFavorite.classList.toggle('active', isFav);
-      await loadLibrarySongs();
-      await renderPlaylists();
+      try {
+        const isFav = await musicStorage.toggleFavorite(current.id);
+        current.isFavorite = isFav;
+        const songObj = allSongs.find((s) => String(s.id) === String(current.id));
+        if (songObj) songObj.isFavorite = isFav;
+        btnFavorite.textContent = isFav ? '♥' : '♡';
+        btnFavorite.classList.toggle('active', isFav);
+        applyFilterAndSearch();
+        await renderPlaylists();
+      } catch (err) {
+        console.warn("Sheet toggle favorite error:", err);
+      }
     });
   }
 }

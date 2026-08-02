@@ -105,25 +105,46 @@ class MusicStorage {
   }
 
   /**
-   * Toggle favorite status of a song
+   * Toggle favorite status of a song (supports both string & numeric ID lookups)
    */
   async toggleFavorite(id) {
     await this.ensureDB();
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction('songs', 'readwrite');
       const store = tx.objectStore('songs');
+      
       const getReq = store.get(id);
 
       getReq.onsuccess = () => {
-        const song = getReq.result;
-        if (!song) {
-          reject(new Error('Song not found'));
+        let song = getReq.result;
+
+        const performToggle = (targetSong) => {
+          targetSong.isFavorite = !targetSong.isFavorite;
+          const putReq = store.put(targetSong);
+          putReq.onsuccess = () => resolve(targetSong.isFavorite);
+          putReq.onerror = (e) => reject(e.target.error);
+        };
+
+        if (song) {
+          performToggle(song);
           return;
         }
-        song.isFavorite = !song.isFavorite;
-        const putReq = store.put(song);
-        putReq.onsuccess = () => resolve(song.isFavorite);
-        putReq.onerror = (e) => reject(e.target.error);
+
+        // Fallback: try numeric ID if string lookup returned undefined
+        if (!isNaN(Number(id))) {
+          const numReq = store.get(Number(id));
+          numReq.onsuccess = () => {
+            const numSong = numReq.result;
+            if (!numSong) {
+              reject(new Error('Song not found'));
+              return;
+            }
+            performToggle(numSong);
+          };
+          numReq.onerror = (e) => reject(e.target.error);
+        } else {
+          reject(new Error('Song not found'));
+        }
       };
       getReq.onerror = (e) => reject(e.target.error);
     });
