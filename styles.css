@@ -154,7 +154,10 @@ html, body {
 .app-header {
   position: relative;
   z-index: 10;
-  padding: 16px 20px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-bottom: 12px;
+  padding-left: 20px;
+  padding-right: 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -255,7 +258,10 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  padding: 16px 20px 140px 20px;
+  padding-top: 16px;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   display: none;
   opacity: 0;
@@ -761,9 +767,9 @@ html, body {
 /* Floating Navigation Dock (z-index: 1000) */
 .floating-nav-dock {
   position: absolute;
-  bottom: 16px;
-  left: 20px;
-  right: 20px;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  right: 16px;
   height: var(--nav-dock-height);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -842,9 +848,9 @@ html, body {
 /* Floating Glass Mini Player (PROPER HIGH Z-INDEX 1100 FLOATING ABOVE DOCK) */
 .floating-mini-player {
   position: absolute;
-  bottom: 90px;
-  left: 20px;
-  right: 20px;
+  bottom: calc(var(--nav-dock-height) + 16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  right: 16px;
   height: var(--mini-player-height);
   background: linear-gradient(135deg, rgba(40, 32, 60, 0.96), rgba(18, 18, 24, 0.98));
   backdrop-filter: var(--glass-blur);
@@ -926,7 +932,10 @@ html, body {
   z-index: 500;
   display: flex;
   flex-direction: column;
-  padding: 16px 24px 115px 24px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+  padding-left: 24px;
+  padding-right: 24px;
   transform: translateY(100%);
   transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;

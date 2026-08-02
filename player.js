@@ -224,9 +224,10 @@ class AudioPlayerEngine {
   }
 
   async play() {
-    this.initAudioContext();
     if (this.audioContext && this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
+      try {
+        await this.audioContext.resume();
+      } catch (e) {}
     }
     if (this.currentIndex === -1 && this.queue.length > 0) {
       this.currentIndex = 0;
@@ -326,12 +327,14 @@ class AudioPlayerEngine {
   }
 
   setEQBandGain(index, gainDb) {
+    this.initAudioContext();
     if (this.eqFilters[index]) {
       this.eqFilters[index].gain.value = gainDb;
     }
   }
 
   applyEQPreset(presetName) {
+    this.initAudioContext();
     const gains = this.eqPresets[presetName] || this.eqPresets.flat;
     gains.forEach((gain, idx) => this.setEQBandGain(idx, gain));
     return gains;
