@@ -1,17 +1,19 @@
-const CACHE_NAME = 'anywhere-pwa-v38';
+const CACHE_NAME = 'anywhere-pwa-v39';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './styles.css?v=37',
-  './app.js?v=38',
+  './app.js?v=39',
   './storage.js',
   './metadata.js',
   './player.js',
   './transfer.js',
   './demoTracks.js',
+  './gdrive.js',
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js',
-  'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js'
+  'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js',
+  'https://accounts.google.com/gsi/client'
 ];
 
 self.addEventListener('install', (event) => {

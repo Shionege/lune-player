@@ -8,6 +8,7 @@ import { extractMetadata } from './metadata.js';
 import { playerEngine } from './player.js';
 import { peerTransfer } from './transfer.js';
 import { generateDemoTracks } from './demoTracks.js';
+import { gdriveSync } from './gdrive.js';
 
 let allSongs = [];
 let allPlaylists = [];
@@ -1337,4 +1338,116 @@ function formatTime(seconds) {
 
 function escapeHtml(str) {
   return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ==========================================================================
+   Google Drive Cloud Sync & Backup UI Manager
+   ========================================================================== */
+function initGDriveSyncUI() {
+  const badge = document.getElementById('gdrive-status-badge');
+  const userInfo = document.getElementById('gdrive-user-info');
+  const btnConnect = document.getElementById('btn-gdrive-connect');
+  const actionsGroup = document.getElementById('gdrive-actions-group');
+  const btnDisconnect = document.getElementById('btn-gdrive-disconnect');
+  const btnBackup = document.getElementById('btn-gdrive-backup');
+  const btnRestore = document.getElementById('btn-gdrive-restore');
+  const progressContainer = document.getElementById('gdrive-progress-container');
+  const progressFill = document.getElementById('gdrive-progress-fill');
+  const progressText = document.getElementById('gdrive-progress-text');
+
+  const DEFAULT_CLIENT_ID = '930129759881-lune-player-pwa.apps.googleusercontent.com';
+
+  const updateUIState = () => {
+    if (gdriveSync.isConnected()) {
+      if (badge) {
+        badge.textContent = 'Connected';
+        badge.style.background = 'rgba(48, 209, 88, 0.2)';
+        badge.style.color = '#30d158';
+      }
+      if (userInfo) userInfo.textContent = `Terhubung sebagai: ${gdriveSync.getUserEmail()}`;
+      if (btnConnect) btnConnect.style.display = 'none';
+      if (actionsGroup) actionsGroup.style.display = 'flex';
+    } else {
+      if (badge) {
+        badge.textContent = 'Not Connected';
+        badge.style.background = 'rgba(255,255,255,0.1)';
+        badge.style.color = 'var(--text-muted)';
+      }
+      if (userInfo) userInfo.textContent = 'Hubungkan akun Google Drive untuk melakukan Backup & Restore seluruh koleksi lagu secara otomatis.';
+      if (btnConnect) btnConnect.style.display = 'flex';
+      if (actionsGroup) actionsGroup.style.display = 'none';
+    }
+  };
+
+  updateUIState();
+
+  const initClient = () => {
+    gdriveSync.initAuth(DEFAULT_CLIENT_ID, (success, err) => {
+      if (success) {
+        updateUIState();
+      } else {
+        alert("Gagal terhubung ke Google Drive: " + err);
+      }
+    });
+  };
+
+  if (window.google && window.google.accounts) {
+    initClient();
+  } else {
+    window.addEventListener('load', () => setTimeout(initClient, 1000));
+  }
+
+  if (btnConnect) {
+    btnConnect.addEventListener('click', () => {
+      if (!window.google || !window.google.accounts) {
+        alert("SDK Authentication Google sedang dimuat. Coba beberapa saat lagi.");
+        return;
+      }
+      gdriveSync.login();
+    });
+  }
+
+  if (btnDisconnect) {
+    btnDisconnect.addEventListener('click', () => {
+      gdriveSync.logout();
+      updateUIState();
+    });
+  }
+
+  if (btnBackup) {
+    btnBackup.addEventListener('click', async () => {
+      try {
+        progressContainer.style.display = 'block';
+        await gdriveSync.backupLibrary((current, total, msg) => {
+          const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+          progressFill.style.width = `${pct}%`;
+          progressText.textContent = `${msg} (${pct}%)`;
+        });
+        setTimeout(() => { progressContainer.style.display = 'none'; }, 3000);
+      } catch (e) {
+        alert("Gagal Backup ke Drive: " + e.message);
+        progressContainer.style.display = 'none';
+      }
+    });
+  }
+
+  if (btnRestore) {
+    btnRestore.addEventListener('click', async () => {
+      if (!confirm("Restorasi akan mengunduh seluruh lagu dari Google Drive Anda ke IndexedDB. Lanjutkan?")) return;
+      try {
+        progressContainer.style.display = 'block';
+        await gdriveSync.restoreLibrary((current, total, msg) => {
+          const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+          progressFill.style.width = `${pct}%`;
+          progressText.textContent = `${msg} (${pct}%)`;
+        });
+        await loadLibrarySongs();
+        await renderPlaylists();
+        setTimeout(() => { progressContainer.style.display = 'none'; }, 3000);
+      } catch (e) {
+        alert("Gagal Restore dari Drive: " + e.message);
+        progressContainer.style.display = 'none';
+      }
+    });
+  }
 }
