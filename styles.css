@@ -847,24 +847,24 @@ html, body {
   box-shadow: 0 0 15px rgba(166, 192, 254, 0.4);
 }
 
-/* Floating Glass Mini Player (PROPER HIGH Z-INDEX 1100 FLOATING ABOVE DOCK) */
+/* Floating Glass Mini Player (Apple Music / Spotify Style Widget) */
 .floating-mini-player {
   position: absolute;
-  bottom: calc(var(--nav-dock-height) + 16px + env(safe-area-inset-bottom, 0px));
-  left: 16px;
-  right: 16px;
-  height: var(--mini-player-height);
-  background: linear-gradient(135deg, rgba(40, 32, 60, 0.96), rgba(18, 18, 24, 0.98));
+  bottom: calc(var(--nav-dock-height) + 10px + env(safe-area-inset-bottom, 0px));
+  left: 12px;
+  right: 12px;
+  height: 60px;
+  background: rgba(26, 22, 38, 0.94);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
   display: none; /* DISPLAY NONE BY DEFAULT WHEN UNPLAYED */
   align-items: center;
-  padding: 8px 14px;
-  gap: 12px;
+  padding: 6px 12px;
+  gap: 10px;
   z-index: 1100;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(94, 92, 230, 0.25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75), 0 0 20px rgba(94, 92, 230, 0.2);
   cursor: pointer;
   transform: translateY(20px);
   opacity: 0;
@@ -878,17 +878,21 @@ html, body {
 }
 
 .mini-art {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   object-fit: cover;
   background: #1a1a24;
   flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 .mini-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .mini-title-row {
@@ -916,7 +920,27 @@ html, body {
 .mini-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mini-controls .action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.mini-controls .action-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Now Playing Slide-Up Sheet Overlay */
