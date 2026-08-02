@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+  <!-- iOS PWA Audio Background Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#050507">
@@ -24,7 +27,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=25">
+  <link rel="stylesheet" href="styles.css?v=26">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -50,7 +53,7 @@
       <div class="header-actions">
         <button class="header-action-pill" id="btn-generate-demo" title="Generate Demo Tracks">✨ Demo</button>
         <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">➕ Import Lagu</button>
-        <input type="file" id="file-input" accept="audio/*" multiple style="display: none;">
+        <input type="file" id="file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac,.ogg,.opus,.webm,.3gp,.3g2,.amr,.wma" multiple style="display: none;">
       </div>
     </header>
 
@@ -475,7 +478,7 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=25"></script>
+  <script type="module" src="app.js?v=26"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

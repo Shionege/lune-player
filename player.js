@@ -1,10 +1,13 @@
 /**
  * player.js - Audio Player Engine with Web Audio API Equalizer & MediaSession
+ * iOS Background Audio Fix: handles AudioContext suspension & visibilitychange
  */
 
 class AudioPlayerEngine {
   constructor() {
     this.audio = new Audio();
+    this.audio.playsinline = true;        // iOS: prevent fullscreen takeover
+    this.audio.preload = 'auto';
     this.queue = [];
     this.originalQueue = [];
     this.currentIndex = -1;
@@ -31,6 +34,35 @@ class AudioPlayerEngine {
     this.onQueueChange = null;
 
     this.initAudioEvents();
+    this.initVisibilityHandler();
+  }
+
+  /**
+   * iOS Background Audio Fix:
+   * When app goes to background, iOS suspends AudioContext.
+   * On returning to foreground, resume it so audio keeps playing.
+   */
+  initVisibilityHandler() {
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        // App came back to foreground — resume AudioContext if suspended
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+          try {
+            await this.audioContext.resume();
+          } catch (e) {
+            console.warn('AudioContext resume failed:', e);
+          }
+        }
+        // If we were playing before backgrounding, ensure audio is still playing
+        if (this.isPlaying && this.audio.paused) {
+          try {
+            await this.audio.play();
+          } catch (e) {
+            console.warn('Audio resume on foreground failed:', e);
+          }
+        }
+      }
+    });
   }
 
   initAudioContext() {
@@ -57,7 +89,7 @@ class AudioPlayerEngine {
 
       lastNode.connect(this.audioContext.destination);
     } catch (e) {
-      console.warn("Web Audio API equalizer initialization failed or blocked until user interaction:", e);
+      console.warn("Web Audio API equalizer initialization failed:", e);
     }
   }
 
@@ -84,6 +116,17 @@ class AudioPlayerEngine {
       this.handleTrackEnded();
     });
 
+    // iOS: Resume AudioContext on user interaction (required by iOS policy)
+    this.audio.addEventListener('play', async () => {
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        try {
+          await this.audioContext.resume();
+        } catch (e) {
+          console.warn('AudioContext resume on play failed:', e);
+        }
+      }
+    });
+
     this.setupMediaSession();
   }
 
@@ -99,6 +142,12 @@ class AudioPlayerEngine {
         this.seek(details.seekTime);
       }
     });
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      this.seek(this.audio.currentTime + (details.seekOffset || 10));
+    });
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      this.seek(this.audio.currentTime - (details.seekOffset || 10));
+    });
   }
 
   updateMediaSessionMetadata(song, coverUrl) {
@@ -107,7 +156,7 @@ class AudioPlayerEngine {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song.title || 'Unknown Title',
       artist: song.artist || 'Unknown Artist',
-      album: song.album || 'Anywhere Player',
+      album: song.album || 'Lune Player',
       artwork: coverUrl ? [
         { src: coverUrl, sizes: '512x512', type: 'image/png' }
       ] : [
@@ -119,6 +168,16 @@ class AudioPlayerEngine {
   updateMediaSessionState() {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
+      // Update position state for iOS lock screen scrubber
+      if (this.audio.duration && isFinite(this.audio.duration)) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: this.audio.duration,
+            playbackRate: this.audio.playbackRate,
+            position: this.audio.currentTime,
+          });
+        } catch (e) { /* setPositionState not supported on all browsers */ }
+      }
     }
   }
 
@@ -152,7 +211,9 @@ class AudioPlayerEngine {
 
     let coverUrl = null;
     if (currentSong.coverBlob) {
-      coverUrl = URL.createObjectURL(currentSong.coverBlob);
+      try {
+        coverUrl = URL.createObjectURL(currentSong.coverBlob);
+      } catch(e) { coverUrl = null; }
     }
 
     this.updateMediaSessionMetadata(currentSong, coverUrl);
@@ -234,7 +295,7 @@ class AudioPlayerEngine {
 
   seek(seconds) {
     if (isFinite(seconds)) {
-      this.audio.currentTime = seconds;
+      this.audio.currentTime = Math.max(0, Math.min(seconds, this.audio.duration || 0));
     }
   }
 
