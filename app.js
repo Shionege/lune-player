@@ -161,10 +161,13 @@ function initTabNavigation() {
       openNowPlayingSheet();
     }
   });
-}
-  document.getElementById('btn-open-now-playing-sheet').addEventListener('click', () => {
-    openNowPlayingSheet();
-  });
+
+  const btnOpenSheet = document.getElementById('btn-open-now-playing-sheet');
+  if (btnOpenSheet) {
+    btnOpenSheet.addEventListener('click', () => {
+      openNowPlayingSheet();
+    });
+  }
 }
 
 /* ==========================================================================
