@@ -306,30 +306,7 @@ function renderLibrarySongs() {
     });
   });
 
-  listContainer.querySelectorAll('[data-action="favorite"]').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const songId = btn.dataset.id;
-      try {
-        const isFav = await musicStorage.toggleFavorite(songId);
-        const songObj = allSongs.find((s) => String(s.id) === String(songId));
-        if (songObj) songObj.isFavorite = isFav;
-        const currentSong = playerEngine.getCurrentSong();
-        if (currentSong && String(currentSong.id) === String(songId)) {
-          currentSong.isFavorite = isFav;
-          const sheetFavBtn = document.getElementById('sheet-btn-favorite');
-          if (sheetFavBtn) {
-            sheetFavBtn.textContent = isFav ? '♥' : '♡';
-            sheetFavBtn.classList.toggle('active', isFav);
-          }
-        }
-        applyFilterAndSearch();
-        await renderPlaylists();
-      } catch (err) {
-        console.warn("Toggle favorite error:", err);
-      }
-    });
-  });
+  /* Favorite clicks are now handled by Global Event Delegation */
 
   listContainer.querySelectorAll('[data-action="delete"]').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
@@ -1410,11 +1387,13 @@ function initGDriveSyncUI() {
 
   if (btnConnect) {
     btnConnect.addEventListener('click', () => {
-      if (!window.google || !window.google.accounts) {
-        alert("SDK Authentication Google sedang dimuat. Coba beberapa saat lagi.");
-        return;
-      }
-      gdriveSync.login();
+      gdriveSync.login(null, (success, err) => {
+        if (success) {
+          updateUIState();
+        } else if (err) {
+          alert("Koneksi Google Drive gagal: " + (err.message || err));
+        }
+      });
     });
   }
 
@@ -1460,5 +1439,52 @@ function initGDriveSyncUI() {
         progressContainer.style.display = 'none';
       }
     });
-  }
 }
+
+/* ==========================================================================
+   Global Event Delegation for Favorite / Heart Buttons
+   ========================================================================== */
+document.addEventListener('click', async (e) => {
+  const favBtn = e.target.closest('[data-action="favorite"], #sheet-btn-favorite');
+  if (!favBtn) return;
+
+  e.stopPropagation();
+  e.preventDefault();
+
+  const currentTrack = playerEngine.getCurrentSong();
+  const songId = favBtn.dataset.id || (currentTrack ? currentTrack.id : null);
+  if (!songId) return;
+
+  try {
+    const isFav = await musicStorage.toggleFavorite(songId);
+
+    // 1. Update in-memory allSongs array
+    const songObj = allSongs.find((s) => String(s.id) === String(songId));
+    if (songObj) songObj.isFavorite = isFav;
+
+    // 2. Update current playing song
+    if (currentTrack && String(currentTrack.id) === String(songId)) {
+      currentTrack.isFavorite = isFav;
+    }
+
+    // 3. Update DOM buttons instantly across the whole document
+    document.querySelectorAll(`[data-action="favorite"][data-id="${songId}"]`).forEach(btn => {
+      btn.textContent = isFav ? '♥' : '♡';
+      btn.classList.toggle('active', isFav);
+    });
+
+    const sheetFavBtn = document.getElementById('sheet-btn-favorite');
+    if (sheetFavBtn && currentTrack && String(currentTrack.id) === String(songId)) {
+      sheetFavBtn.textContent = isFav ? '♥' : '♡';
+      sheetFavBtn.classList.toggle('active', isFav);
+    }
+
+    // 4. Update playlists / filter view if needed
+    if (currentFilter === 'favorites') {
+      applyFilterAndSearch();
+    }
+    await renderPlaylists();
+  } catch (err) {
+    console.error("Global favorite toggle error:", err);
+  }
+});

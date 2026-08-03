@@ -71,13 +71,29 @@ class GDriveSync {
   }
 
   /**
-   * Trigger Google Login Popup
+   * Trigger Google Login Popup (with dynamic init fallback)
    */
-  login() {
-    if (this.tokenClient) {
-      this.tokenClient.requestAccessToken({ prompt: 'consent' });
-    } else {
-      alert("Google Client ID belum diisi atau library belum siap.");
+  login(customClientId = null, onStatusChange = null) {
+    const clientId = customClientId || localStorage.getItem('gdrive_client_id') || '930129759881-lune-player-pwa.apps.googleusercontent.com';
+
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+      this.initAuth(clientId, onStatusChange);
+      if (this.tokenClient) {
+        try {
+          this.tokenClient.requestAccessToken({ prompt: 'select_account' });
+          return;
+        } catch (e) {
+          console.warn("Token client requestAccessToken error:", e);
+        }
+      }
+    }
+
+    // Fallback if SDK or popup is blocked: Allow direct Access Token entry
+    const userToken = prompt("Masukkan Google OAuth Access Token (atau biarkan kosong untuk mencoba kembali):");
+    if (userToken && userToken.trim()) {
+      this.accessToken = userToken.trim();
+      localStorage.setItem('gdrive_token', this.accessToken);
+      if (onStatusChange) onStatusChange(true, null);
     }
   }
 
