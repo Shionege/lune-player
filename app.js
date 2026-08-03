@@ -1399,6 +1399,25 @@ function initGDriveSyncUI() {
     window.addEventListener('load', () => setTimeout(initClient, 1000));
   }
 
+  const btnTokenInput = document.getElementById('btn-gdrive-token-input');
+  if (btnTokenInput) {
+    btnTokenInput.addEventListener('click', () => {
+      const token = prompt("Masukkan Google Access Token / Client ID (dari OAuth Playground atau Google Cloud Console):");
+      if (token && token.trim()) {
+        const trimmed = token.trim();
+        if (trimmed.includes('apps.googleusercontent.com')) {
+          localStorage.setItem('gdrive_client_id', trimmed);
+          alert("Client ID disimpan! Klik Hubungkan Google Drive kembali.");
+        } else {
+          gdriveSync.accessToken = trimmed;
+          localStorage.setItem('gdrive_token', trimmed);
+          updateUIState();
+          alert("Access Token disimpan! Google Drive berhasil terhubung.");
+        }
+      }
+    });
+  }
+
   if (btnConnect) {
     btnConnect.addEventListener('click', () => {
       gdriveSync.login(null, (success, err) => {

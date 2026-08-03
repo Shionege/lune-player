@@ -1,9 +1,9 @@
-const CACHE_NAME = 'anywhere-pwa-v49';
+const CACHE_NAME = 'anywhere-pwa-v50';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './styles.css?v=49',
-  './app.js?v=49',
+  './styles.css?v=50',
+  './app.js?v=50',
   './storage.js',
   './metadata.js',
   './player.js',
@@ -20,7 +20,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Pre-caching static assets v2');
+      console.log('[SW] Pre-caching static assets v50');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -41,20 +41,17 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/* Network-First Strategy for Online Mode + Cache Fallback for Offline Mode */
 self.addEventListener('fetch', (event) => {
-  // Ignore non-GET or chrome-extension requests
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
+          const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseClone);
           });
         }
         return networkResponse;
