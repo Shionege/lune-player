@@ -1090,25 +1090,6 @@ function initSheetControls() {
       btnShuffle.classList.toggle('active', isShuffle);
     });
   }
-
-  if (btnFavorite) {
-    btnFavorite.addEventListener('click', async () => {
-      const current = playerEngine.getCurrentSong();
-      if (!current) return;
-      try {
-        const isFav = await musicStorage.toggleFavorite(current.id);
-        current.isFavorite = isFav;
-        const songObj = allSongs.find((s) => String(s.id) === String(current.id));
-        if (songObj) songObj.isFavorite = isFav;
-        btnFavorite.textContent = isFav ? '♥' : '♡';
-        btnFavorite.classList.toggle('active', isFav);
-        applyFilterAndSearch();
-        await renderPlaylists();
-      } catch (err) {
-        console.warn("Sheet toggle favorite error:", err);
-      }
-    });
-  }
 }
 
 function openNowPlayingSheet() {

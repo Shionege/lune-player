@@ -785,8 +785,8 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(64px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(64px + max(16px, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
   background: #0d0a17;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -802,15 +802,15 @@ body {
 }
 
 /* Solid extension block under bottom dock to 100% eliminate any black safe-area gap on iOS */
-.floating-nav-dock::after {
-  content: '';
+.nav-dock-chin-extension {
   position: absolute;
-  top: 100%;
+  bottom: -150px;
   left: -50px;
   right: -50px;
   height: 200px;
   background: #0d0a17;
-  z-index: 999;
+  z-index: 998;
+  pointer-events: none;
 }
 
 .dock-item {

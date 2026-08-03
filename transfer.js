@@ -121,7 +121,7 @@ class PeerTransferEngine {
   }
 
   handleIncomingData(data) {
-    if (typeof data === 'object' && data.type === 'start') {
+    if (typeof data === 'object' && data && data.type === 'start') {
       this.incomingFile = {
         meta: data.meta,
         chunks: [],
@@ -130,20 +130,26 @@ class PeerTransferEngine {
       if (this.onTransferProgress) {
         this.onTransferProgress(0, data.meta.name);
       }
-    } else if (data instanceof ArrayBuffer || (data && data.type === 'chunk')) {
-      const buffer = data instanceof ArrayBuffer ? data : data.chunk;
+    } else if (data instanceof ArrayBuffer || data instanceof Uint8Array || data instanceof Blob || (typeof data === 'object' && data && data.chunk)) {
       if (this.incomingFile) {
-        this.incomingFile.chunks.push(buffer);
-        this.incomingFile.receivedSize += buffer.byteLength;
-        const progress = Math.min(100, Math.round((this.incomingFile.receivedSize / this.incomingFile.meta.size) * 100));
+        const rawChunk = (data && data.chunk) ? data.chunk : data;
+        this.incomingFile.chunks.push(rawChunk);
+        const chunkSize = rawChunk.byteLength || rawChunk.size || 0;
+        this.incomingFile.receivedSize += chunkSize;
+        const totalSize = this.incomingFile.meta ? this.incomingFile.meta.size : 1;
+        const progress = Math.min(100, Math.round((this.incomingFile.receivedSize / totalSize) * 100));
         if (this.onTransferProgress) {
-          this.onTransferProgress(progress, this.incomingFile.meta.name);
+          this.onTransferProgress(progress, this.incomingFile.meta ? this.incomingFile.meta.name : 'audio');
         }
       }
-    } else if (typeof data === 'object' && data.type === 'end') {
-      if (this.incomingFile) {
-        const fullBlob = new Blob(this.incomingFile.chunks, { type: this.incomingFile.meta.type || 'audio/mpeg' });
-        const fileObj = new File([fullBlob], this.incomingFile.meta.name, { type: fullBlob.type });
+    } else if (typeof data === 'object' && data && data.type === 'end') {
+      if (this.incomingFile && this.incomingFile.chunks.length > 0) {
+        const metaType = (this.incomingFile.meta && this.incomingFile.meta.type) ? this.incomingFile.meta.type : 'audio/mpeg';
+        const metaName = (this.incomingFile.meta && this.incomingFile.meta.name) ? this.incomingFile.meta.name : `received_song_${Date.now()}.mp3`;
+        
+        const fullBlob = new Blob(this.incomingFile.chunks, { type: metaType });
+        const fileObj = new File([fullBlob], metaName, { type: fullBlob.type || 'audio/mpeg' });
+        
         if (this.onFileReceived) {
           this.onFileReceived(fileObj);
         }
@@ -153,7 +159,7 @@ class PeerTransferEngine {
   }
 
   /**
-   * Send file to connected Peer in ArrayBuffer chunks
+   * Send file to connected Peer in ArrayBuffer chunks with WebRTC Backpressure Throttling
    */
   async sendFile(file) {
     if (!this.connection || !this.connection.open) {
@@ -161,7 +167,7 @@ class PeerTransferEngine {
       return;
     }
 
-    const chunkSize = 64 * 1024; // 64KB chunks
+    const chunkSize = 32 * 1024; // 32KB chunks for WebRTC stability
     const totalSize = file.size;
 
     // Send start metadata
@@ -170,14 +176,20 @@ class PeerTransferEngine {
       meta: {
         name: file.name,
         size: totalSize,
-        type: file.type,
+        type: file.type || 'audio/mpeg',
       },
     });
 
     const arrayBuffer = await file.arrayBuffer();
     let offset = 0;
+    const dc = this.connection.dataChannel || this.connection._dc;
 
     while (offset < totalSize) {
+      // WebRTC Backpressure Check: wait if buffer exceeds 128KB
+      while (dc && dc.bufferedAmount > 128 * 1024) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
+
       const chunk = arrayBuffer.slice(offset, offset + chunkSize);
       this.connection.send(chunk);
       offset += chunkSize;
@@ -187,8 +199,8 @@ class PeerTransferEngine {
         this.onTransferProgress(progress, file.name);
       }
 
-      // Small tick delay to avoid buffer overflow on weak mobile devices
-      await new Promise((r) => setTimeout(r, 15));
+      // Small tick delay to yield event loop
+      await new Promise((r) => setTimeout(r, 10));
     }
 
     // Send end signal
