@@ -106,65 +106,22 @@ class MusicStorage {
   }
 
   /**
-   * Toggle favorite status of a song (3-Tier Lookup Strategy: String -> Number -> GetAll Array)
+   * Toggle favorite status of a song (100% fail-safe lookup)
    */
   async toggleFavorite(id) {
     await this.ensureDB();
+    const songs = await this.getAllSongs();
+    const targetSong = songs.find(s => String(s.id) === String(id));
+    if (!targetSong) throw new Error('Song not found');
+
+    targetSong.isFavorite = !targetSong.isFavorite;
+
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction('songs', 'readwrite');
       const store = tx.objectStore('songs');
-      
-      const updateSongInStore = (targetSong) => {
-        targetSong.isFavorite = !targetSong.isFavorite;
-        const putReq = store.put(targetSong);
-        putReq.onsuccess = () => resolve(targetSong.isFavorite);
-        putReq.onerror = (e) => reject(e.target.error);
-      };
-
-      // Tier 1: Direct String Key lookup
-      const strReq = store.get(id);
-      strReq.onsuccess = () => {
-        if (strReq.result) {
-          updateSongInStore(strReq.result);
-          return;
-        }
-
-        // Tier 2: Direct Numeric Key lookup
-        if (!isNaN(Number(id))) {
-          const numReq = store.get(Number(id));
-          numReq.onsuccess = () => {
-            if (numReq.result) {
-              updateSongInStore(numReq.result);
-              return;
-            }
-            // Tier 3: Scan all songs
-            const allReq = store.getAll();
-            allReq.onsuccess = () => {
-              const match = (allReq.result || []).find(s => String(s.id) === String(id));
-              if (match) {
-                updateSongInStore(match);
-              } else {
-                reject(new Error('Song not found'));
-              }
-            };
-            allReq.onerror = (e) => reject(e.target.error);
-          };
-          numReq.onerror = (e) => reject(e.target.error);
-        } else {
-          // Tier 3: Scan all songs
-          const allReq = store.getAll();
-          allReq.onsuccess = () => {
-            const match = (allReq.result || []).find(s => String(s.id) === String(id));
-            if (match) {
-              updateSongInStore(match);
-            } else {
-              reject(new Error('Song not found'));
-            }
-          };
-          allReq.onerror = (e) => reject(e.target.error);
-        }
-      };
-      strReq.onerror = (e) => reject(e.target.error);
+      const putReq = store.put(targetSong);
+      putReq.onsuccess = () => resolve(targetSong.isFavorite);
+      putReq.onerror = (e) => reject(e.target.error);
     });
   }
 
