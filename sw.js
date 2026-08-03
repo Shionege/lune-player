@@ -1,9 +1,9 @@
-const CACHE_NAME = 'anywhere-pwa-v54';
+const CACHE_NAME = 'anywhere-pwa-v55';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './styles.css?v=54',
-  './app.js?v=54',
+  './styles.css?v=55',
+  './app.js?v=55',
   './storage.js',
   './metadata.js',
   './player.js',
@@ -11,6 +11,8 @@ const ASSETS_TO_CACHE = [
   './demoTracks.js',
   './gdrive.js',
   './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js',
   'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js',
   'https://accounts.google.com/gsi/client'

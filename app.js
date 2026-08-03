@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPlayerEvents();
   initLibraryEvents();
   initPlaylistModalEvents();
-  initP2PTransferEvents();
+  initTransferEvents();
   initEqualizerEvents();
   initSheetControls();
   initSeekbarDragControls();
