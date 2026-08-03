@@ -6,7 +6,9 @@
 class AudioPlayerEngine {
   constructor() {
     this.audio = new Audio();
-    this.audio.playsinline = true;        // iOS: prevent fullscreen takeover
+    this.audio.setAttribute('playsinline', 'true');
+    this.audio.setAttribute('webkit-playsinline', 'true');
+    this.audio.setAttribute('x5-playsinline', 'true');
     this.audio.preload = 'auto';
     this.queue = [];
     this.originalQueue = [];
