@@ -999,13 +999,27 @@ function initSheetControls() {
   if (btnClose) btnClose.addEventListener('click', () => closeNowPlayingSheet());
   if (sheetDragHandle) {
     sheetDragHandle.addEventListener('click', () => closeNowPlayingSheet());
-    let startY = 0;
-    sheetDragHandle.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
+  }
+
+  const nowPlayingSheetEl = document.getElementById('now-playing-sheet');
+  if (nowPlayingSheetEl) {
+    let touchStartY = 0;
+    let touchStartX = 0;
+
+    nowPlayingSheetEl.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
     }, { passive: true });
-    sheetDragHandle.addEventListener('touchmove', (e) => {
-      if (e.touches[0].clientY - startY > 40) {
-        closeNowPlayingSheet();
+
+    nowPlayingSheetEl.addEventListener('touchmove', (e) => {
+      const sheetHeight = nowPlayingSheetEl.clientHeight || window.innerHeight;
+      // 80% vertical area gesture zone for drag-down-to-close
+      if (touchStartY < sheetHeight * 0.8 && nowPlayingSheetEl.scrollTop <= 10) {
+        const diffY = e.touches[0].clientY - touchStartY;
+        const diffX = Math.abs(e.touches[0].clientX - touchStartX);
+        if (diffY > 50 && diffY > diffX * 1.3) {
+          closeNowPlayingSheet();
+        }
       }
     }, { passive: true });
   }
@@ -1439,6 +1453,7 @@ function initGDriveSyncUI() {
         progressContainer.style.display = 'none';
       }
     });
+  }
 }
 
 /* ==========================================================================
