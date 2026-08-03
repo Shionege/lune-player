@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=53">
+  <link rel="stylesheet" href="styles.css?v=54">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -61,27 +61,29 @@
       <!-- TAB 1: Transfer & Import -->
       <section class="tab-view" id="tab-transfer">
         <div class="page-title-row">
-          <h1 class="page-title">Wi-Fi Import</h1>
+          <h1 class="page-title">Wi-Fi & Online Import</h1>
         </div>
 
+        <!-- Wi-Fi P2P Receiver Mode -->
         <div class="p2p-card">
-          <h3>iPhone Receiver Mode</h3>
+          <h3>📱 iPhone Receiver Mode</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
             Open app on Laptop, select Transfer, and enter this 6-digit PIN:
           </p>
 
           <div class="pin-display" id="receiver-pin">------</div>
 
-          <div class="progress-bar-container" id="p2p-progress-container" style="display: none;">
+          <div class="progress-bar-container" id="p2p-progress-container" style="display: none; margin-top: 10px;">
             <div class="progress-bar-fill" id="p2p-progress-fill"></div>
           </div>
-          <div id="p2p-status-text" style="font-size: 13px; color: var(--text-muted);">
+          <div id="p2p-status-text" style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
             Ready to receive music directly over local Wi-Fi.
           </div>
         </div>
 
+        <!-- Wi-Fi P2P Laptop Sender Mode & Multi-File Queue -->
         <div class="p2p-card">
-          <h3>Laptop Sender Mode</h3>
+          <h3>💻 Laptop Sender Mode</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
             Enter target PIN generated on iPhone:
           </p>
@@ -91,10 +93,50 @@
             <button class="btn-primary" id="btn-connect-pin" style="white-space: nowrap;">Connect</button>
           </div>
 
-          <div class="drop-zone" id="p2p-send-dropzone" style="display: none;">
+          <div class="drop-zone" id="p2p-send-dropzone" style="display: none; margin-top: 14px;">
             <div style="font-size: 28px; margin-bottom: 8px;">📲 ➔ 🎵</div>
-            <div style="font-weight: 600; font-size: 14px;">Connected! Click or Drag MP3 to Transfer</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Transfers directly without cloud upload</div>
+            <div style="font-weight: 600; font-size: 14px;">Connected! Click or Drag Multiple MP3s to Transfer</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Transfers directly over local Wi-Fi</div>
+            <button class="btn-secondary pill-sm" id="btn-p2p-select-files" style="margin-top: 10px;">📤 Select Multiple Audio Files</button>
+            <input type="file" id="p2p-multi-file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac" multiple style="display: none;">
+          </div>
+
+          <!-- Transfer Queue List UI -->
+          <div id="p2p-queue-container" style="display: none; margin-top: 14px;">
+            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px;">📋 Transfer Queue</h4>
+            <div id="p2p-queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;"></div>
+          </div>
+        </div>
+
+        <!-- Built-in YouTube / YouTube Music MP3 & Playlist Downloader -->
+        <div class="p2p-card" style="margin-top: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <h3>🎵 YouTube Music Downloader</h3>
+            <span class="badge" style="background: rgba(255, 45, 85, 0.2); color: #ff2d55; font-size: 11px; padding: 3px 8px; border-radius: 10px;">MP3 & Playlist</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+            Download lagu atau playlist YouTube Music langsung ke offline library.
+          </p>
+
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="yt-url-input" class="search-input" placeholder="Paste YouTube / YT Music URL..." style="font-size: 13px;">
+            <button class="btn-primary" id="btn-yt-fetch" style="white-space: nowrap; font-size: 13px;">🔍 Fetch</button>
+          </div>
+
+          <div id="yt-status-container" style="display: none; margin-top: 12px;">
+            <div id="yt-status-text" style="font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 6px;"></div>
+            <div class="progress-bar-container" style="height: 6px;">
+              <div class="progress-bar-fill" id="yt-progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- YouTube Playlist / Track List Preview -->
+          <div id="yt-preview-container" style="display: none; margin-top: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);" id="yt-playlist-count">0 Track Ditemukan</span>
+              <button class="btn-primary pill-sm" id="btn-yt-download-all" style="font-size: 12px;">⚡ Download Semua MP3</button>
+            </div>
+            <div id="yt-track-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;"></div>
           </div>
         </div>
       </section>
@@ -530,7 +572,7 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=53"></script>
+  <script type="module" src="app.js?v=54"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

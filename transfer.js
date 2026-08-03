@@ -207,6 +207,22 @@ class PeerTransferEngine {
     this.connection.send({ type: 'end' });
   }
 
+  async sendFileQueue(files) {
+    if (!this.connection || !this.connection.open) {
+      if (this.onError) this.onError("No active Peer connection.");
+      return;
+    }
+    const fileArray = Array.from(files);
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      if (this.onQueueUpdate) {
+        this.onQueueUpdate(i + 1, fileArray.length, file.name);
+      }
+      await this.sendFile(file);
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+
   destroy() {
     if (this.connection) this.connection.close();
     if (this.peer) this.peer.destroy();

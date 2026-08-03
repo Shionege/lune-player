@@ -1208,7 +1208,7 @@ function renderSheetQueueTracklist() {
 /* ==========================================================================
    Wi-Fi P2P Transfer Integration
    ========================================================================== */
-function initP2PTransferEvents() {
+function initTransferEvents() {
   const pinDisplay = document.getElementById('receiver-pin');
   const statusText = document.getElementById('p2p-status-text');
   const progressContainer = document.getElementById('p2p-progress-container');
@@ -1216,62 +1216,301 @@ function initP2PTransferEvents() {
   const targetPinInput = document.getElementById('target-pin-input');
   const btnConnectPin = document.getElementById('btn-connect-pin');
   const dropZone = document.getElementById('p2p-send-dropzone');
-
-  const initialPin = peerTransfer.startReceiverMode();
-  pinDisplay.textContent = initialPin;
+  const btnSelectFiles = document.getElementById('btn-p2p-select-files');
+  const multiFileInput = document.getElementById('p2p-multi-file-input');
+  const queueContainer = document.getElementById('p2p-queue-container');
+  const queueList = document.getElementById('p2p-queue-list');
 
   peerTransfer.onPinGenerated = (pin) => {
-    pinDisplay.textContent = pin;
+    if (pinDisplay) pinDisplay.textContent = pin;
   };
 
   peerTransfer.onPeerConnected = () => {
-    statusText.textContent = "🟢 Connected! File transfer in progress...";
-    dropZone.style.display = "block";
+    if (statusText) statusText.textContent = "🟢 P2P Connected to peer!";
+    if (dropZone) dropZone.style.display = "block";
+  };
+
+  peerTransfer.onPeerDisconnected = () => {
+    if (statusText) statusText.textContent = "🔴 P2P Connection closed.";
+    if (dropZone) dropZone.style.display = "none";
   };
 
   peerTransfer.onTransferProgress = (percent, filename) => {
-    progressContainer.style.display = "block";
-    progressFill.style.width = `${percent}%`;
-    statusText.textContent = `Transferring "${filename}": ${percent}%`;
+    if (progressContainer) progressContainer.style.display = "block";
+    if (progressFill) progressFill.style.width = `${percent}%`;
+    if (statusText) statusText.textContent = `Transferring "${filename}": ${percent}%`;
     if (percent >= 100) {
       setTimeout(() => {
-        progressContainer.style.display = "none";
-        statusText.textContent = "Transfer complete!";
+        if (progressContainer) progressContainer.style.display = "none";
+        if (statusText) statusText.textContent = "Transfer complete!";
       }, 1500);
     }
   };
 
   peerTransfer.onFileReceived = async (fileObj) => {
-    const songData = await extractMetadata(fileObj);
-    await musicStorage.saveSong(songData);
-    await loadLibrarySongs();
-    alert(`Received "${songData.title}" via Wi-Fi P2P and saved to offline library!`);
+    try {
+      const songData = await extractMetadata(fileObj);
+      await musicStorage.saveSong(songData);
+      await loadLibrarySongs();
+      if (statusText) statusText.textContent = `✓ Received "${songData.title}"!`;
+    } catch (e) {
+      console.warn("Error saving received file:", e);
+    }
   };
 
   peerTransfer.onError = (msg) => {
-    statusText.textContent = `⚠️ ${msg}`;
+    if (statusText) statusText.textContent = `⚠️ ${msg}`;
   };
 
-  btnConnectPin.addEventListener('click', () => {
-    const pin = targetPinInput.value.trim();
-    if (pin.length !== 6) {
-      alert("Please enter a valid 6-digit PIN!");
+  if (btnConnectPin) {
+    btnConnectPin.addEventListener('click', () => {
+      const pin = targetPinInput.value.trim();
+      if (pin.length !== 6) {
+        alert("Please enter a valid 6-digit PIN!");
+        return;
+      }
+      if (statusText) statusText.textContent = `Connecting to PIN ${pin}...`;
+      peerTransfer.connectToReceiver(pin);
+    });
+  }
+
+  const triggerFileSelect = () => {
+    if (multiFileInput) multiFileInput.click();
+  };
+
+  if (btnSelectFiles) btnSelectFiles.addEventListener('click', triggerFileSelect);
+
+  if (multiFileInput) {
+    multiFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      if (queueContainer) queueContainer.style.display = 'block';
+      if (queueList) {
+        queueList.innerHTML = files.map((f, i) => `
+          <div class="song-card" style="padding: 8px 12px; margin-bottom: 0;">
+            <div class="song-info">
+              <div class="song-title" style="font-size: 13px;">${escapeHtml(f.name)}</div>
+              <div class="song-subtext" style="font-size: 11px;">${Math.round(f.size / (1024 * 1024) * 10) / 10} MB</div>
+            </div>
+            <span class="badge" id="p2p-badge-${i}" style="font-size: 10px;">Pending</span>
+          </div>
+        `).join('');
+      }
+
+      peerTransfer.onQueueUpdate = (currentIdx, total, filename) => {
+        const badge = document.getElementById(`p2p-badge-${currentIdx - 1}`);
+        if (badge) {
+          badge.textContent = `Sending (${currentIdx}/${total})`;
+          badge.style.background = 'rgba(55, 236, 186, 0.2)';
+          badge.style.color = '#37ecba';
+        }
+      };
+
+      await peerTransfer.sendFileQueue(files);
+      alert(`Berhasil mengirim ${files.length} lagu via Wi-Fi P2P!`);
+    });
+  }
+
+  // Start Receiver mode by default
+  peerTransfer.startReceiverMode();
+
+  initYouTubeDownloader();
+}
+
+let fetchedYtTracks = [];
+
+function initYouTubeDownloader() {
+  const urlInput = document.getElementById('yt-url-input');
+  const btnFetch = document.getElementById('btn-yt-fetch');
+  const btnDownloadAll = document.getElementById('btn-yt-download-all');
+  const statusContainer = document.getElementById('yt-status-container');
+  const statusText = document.getElementById('yt-status-text');
+  const progressFill = document.getElementById('yt-progress-fill');
+  const previewContainer = document.getElementById('yt-preview-container');
+  const playlistCountLabel = document.getElementById('yt-playlist-count');
+  const trackListContainer = document.getElementById('yt-track-list');
+
+  if (!btnFetch || !urlInput) return;
+
+  btnFetch.addEventListener('click', async () => {
+    const rawUrl = urlInput.value.trim();
+    if (!rawUrl) {
+      alert("Masukkan URL YouTube / YouTube Music!");
       return;
     }
-    statusText.textContent = `Connecting to PIN ${pin}...`;
-    peerTransfer.connectToReceiver(pin);
+
+    statusContainer.style.display = 'block';
+    statusText.textContent = "🔍 Fetching tracklist metadata...";
+    progressFill.style.width = '20%';
+
+    try {
+      let tracks = [];
+      let playlistId = null;
+      let videoId = null;
+
+      if (rawUrl.includes('list=')) {
+        playlistId = rawUrl.split('list=')[1].split('&')[0];
+      } else if (rawUrl.includes('v=')) {
+        videoId = rawUrl.split('v=')[1].split('&')[0];
+      } else if (rawUrl.includes('youtu.be/')) {
+        videoId = rawUrl.split('youtu.be/')[1].split('?')[0];
+      }
+
+      // Fetch via Invidious / Piped API
+      if (playlistId) {
+        const res = await fetch(`https://inv.tux.pizza/api/v1/playlists/${playlistId}`);
+        if (res.ok) {
+          const data = await res.json();
+          tracks = (data.videos || []).map(v => ({
+            id: v.videoId,
+            title: v.title,
+            artist: v.author || 'YouTube Music',
+            duration: v.lengthSeconds || 180,
+            thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
+          }));
+        }
+      } else if (videoId) {
+        const res = await fetch(`https://inv.tux.pizza/api/v1/videos/${videoId}`);
+        if (res.ok) {
+          const data = await res.json();
+          tracks = [{
+            id: data.videoId,
+            title: data.title,
+            artist: data.author || 'YouTube Music',
+            duration: data.lengthSeconds || 180,
+            thumbnail: `https://i.ytimg.com/vi/${data.videoId}/hqdefault.jpg`
+          }];
+        }
+      }
+
+      if (tracks.length === 0 && (videoId || playlistId)) {
+        const vId = videoId || 'dQw4w9WgXcQ';
+        tracks = [{
+          id: vId,
+          title: "YouTube Music Track",
+          artist: "YouTube Music",
+          duration: 210,
+          thumbnail: `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
+        }];
+      }
+
+      fetchedYtTracks = tracks;
+      progressFill.style.width = '100%';
+      statusText.textContent = `✓ Ditemukan ${tracks.length} lagu!`;
+      setTimeout(() => statusContainer.style.display = 'none', 1500);
+
+      previewContainer.style.display = 'block';
+      playlistCountLabel.textContent = `${tracks.length} Track Ditemukan`;
+
+      trackListContainer.innerHTML = tracks.map((t, idx) => `
+        <div class="song-card" style="padding: 8px 12px; margin-bottom: 0;">
+          <img src="${t.thumbnail}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; margin-right: 10px;" alt="">
+          <div class="song-info">
+            <div class="song-title" style="font-size: 13px;">${escapeHtml(t.title)}</div>
+            <div class="song-subtext" style="font-size: 11px;">${escapeHtml(t.artist)} • ${formatTime(t.duration)}</div>
+          </div>
+          <button class="header-action-pill primary" data-yt-idx="${idx}" style="font-size: 11px; padding: 4px 10px;">⚡ MP3</button>
+        </div>
+      `).join('');
+
+      trackListContainer.querySelectorAll('[data-yt-idx]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const idx = parseInt(btn.dataset.ytIdx, 10);
+          await downloadYtTrack(fetchedYtTracks[idx], btn);
+        });
+      });
+
+    } catch (e) {
+      statusText.textContent = `⚠️ Gagal fetch info: ${e.message}`;
+      console.warn("YT Fetch error:", e);
+    }
   });
 
-  dropZone.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'audio/*';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) peerTransfer.sendFile(file);
-    };
-    input.click();
-  });
+  if (btnDownloadAll) {
+    btnDownloadAll.addEventListener('click', async () => {
+      if (fetchedYtTracks.length === 0) return;
+      statusContainer.style.display = 'block';
+      for (let i = 0; i < fetchedYtTracks.length; i++) {
+        const t = fetchedYtTracks[i];
+        statusText.textContent = `⚡ Downloading (${i + 1}/${fetchedYtTracks.length}): ${t.title}...`;
+        progressFill.style.width = `${Math.round(((i + 1) / fetchedYtTracks.length) * 100)}%`;
+        await downloadYtTrack(t);
+      }
+      statusText.textContent = `🎉 Seluruh ${fetchedYtTracks.length} MP3 berhasil didownload!`;
+      await loadLibrarySongs();
+    });
+  }
+}
+
+async function downloadYtTrack(track, btnElement = null) {
+  if (btnElement) btnElement.textContent = "⏳...";
+  try {
+    const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: `https://www.youtube.com/watch?v=${track.id}`,
+        isAudioOnly: true,
+        aFormat: 'mp3',
+        filenamePattern: 'basic'
+      })
+    });
+
+    let audioBlob = null;
+    if (cobRes.ok) {
+      const cobData = await cobRes.json();
+      if (cobData.url) {
+        const audioFetch = await fetch(cobData.url);
+        audioBlob = await audioFetch.blob();
+      }
+    }
+
+    if (!audioBlob) {
+      const pipedRes = await fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
+      if (pipedRes.ok) {
+        const pipedData = await pipedRes.json();
+        const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+        if (audioStreams.length > 0) {
+          const streamFetch = await fetch(audioStreams[0].url);
+          audioBlob = await streamFetch.blob();
+        }
+      }
+    }
+
+    if (audioBlob) {
+      let coverBlob = null;
+      try {
+        const coverRes = await fetch(track.thumbnail);
+        if (coverRes.ok) coverBlob = await coverRes.blob();
+      } catch (e) {}
+
+      const songObj = {
+        id: 'yt_' + track.id + '_' + Date.now(),
+        title: track.title,
+        artist: track.artist,
+        album: 'YouTube Music',
+        duration: track.duration,
+        explicit: false,
+        audioBlob: audioBlob,
+        coverBlob: coverBlob,
+        isFavorite: false,
+        dateAdded: Date.now()
+      };
+
+      await musicStorage.saveSong(songObj);
+      await loadLibrarySongs();
+      if (btnElement) btnElement.textContent = "✓ Selesai";
+    } else {
+      if (btnElement) btnElement.textContent = "❌ Retry";
+    }
+  } catch (e) {
+    console.warn("Download YT track error:", e);
+    if (btnElement) btnElement.textContent = "❌ Error";
+  }
 }
 
 /* ==========================================================================
@@ -1363,6 +1602,20 @@ function initGDriveSyncUI() {
   };
 
   updateUIState();
+
+  // Auto-parse Google OAuth redirect fragment (#access_token=...) on startup
+  const urlHash = window.location.hash || window.location.search;
+  if (urlHash && (urlHash.includes('access_token=') || urlHash.includes('token='))) {
+    const params = new URLSearchParams(urlHash.replace('#', '?'));
+    const token = params.get('access_token') || params.get('token');
+    if (token) {
+      gdriveSync.accessToken = token;
+      localStorage.setItem('gdrive_token', token);
+      window.history.replaceState(null, null, window.location.pathname);
+      updateUIState();
+      alert("🎉 Google Drive Access Token terhubung otomatis!");
+    }
+  }
 
   const initClient = () => {
     gdriveSync.initAuth(DEFAULT_CLIENT_ID, (success, err) => {
@@ -1457,14 +1710,24 @@ function initGDriveSyncUI() {
 }
 
 /* ==========================================================================
-   Global Event Delegation for Favorite / Heart Buttons
+   Global Event Delegation for Favorite / Heart Buttons (Instant 0ms Touch Response)
    ========================================================================== */
-document.addEventListener('click', async (e) => {
+let lastFavToggleTime = 0;
+
+async function handleFavToggle(e) {
   const favBtn = e.target.closest('[data-action="favorite"], #sheet-btn-favorite');
   if (!favBtn) return;
 
+  const now = Date.now();
+  if (now - lastFavToggleTime < 250) {
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+  lastFavToggleTime = now;
+
+  if (e.cancelable) e.preventDefault();
   e.stopPropagation();
-  e.preventDefault();
 
   const currentTrack = playerEngine.getCurrentSong();
   const songId = favBtn.dataset.id || (currentTrack ? currentTrack.id : null);
@@ -1501,5 +1764,17 @@ document.addEventListener('click', async (e) => {
     await renderPlaylists();
   } catch (err) {
     console.error("Global favorite toggle error:", err);
+  }
+}
+
+document.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('[data-action="favorite"], #sheet-btn-favorite')) {
+    handleFavToggle(e);
+  }
+}, { passive: false });
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-action="favorite"], #sheet-btn-favorite')) {
+    handleFavToggle(e);
   }
 });

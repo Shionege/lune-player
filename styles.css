@@ -779,14 +779,24 @@ body {
   color: #a5a3ff;
 }
 
+.action-btn.favorite,
+#sheet-btn-favorite,
+[data-action="favorite"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Edge-to-Edge Bottom Navigation Dock (Mentok ke dagu layar) */
 .floating-nav-dock {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(64px + max(16px, env(safe-area-inset-bottom, 0px)));
-  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  height: calc(64px + max(20px, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
   background: #0d0a17;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -804,11 +814,11 @@ body {
 /* Solid extension block under bottom dock to 100% eliminate any black safe-area gap on iOS */
 .nav-dock-chin-extension {
   position: absolute;
-  bottom: -150px;
-  left: -50px;
-  right: -50px;
-  height: 200px;
-  background: #0d0a17;
+  bottom: -200px;
+  left: -100px;
+  right: -100px;
+  height: 300px;
+  background: #0d0a17 !important;
   z-index: 998;
   pointer-events: none;
 }

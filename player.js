@@ -135,21 +135,22 @@ class AudioPlayerEngine {
   setupMediaSession() {
     if (!('mediaSession' in navigator)) return;
 
-    navigator.mediaSession.setActionHandler('play', () => this.play());
-    navigator.mediaSession.setActionHandler('pause', () => this.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
-    navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-    navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (details.seekTime != null) {
-        this.seek(details.seekTime);
-      }
-    });
-    navigator.mediaSession.setActionHandler('seekforward', (details) => {
-      this.seek(this.audio.currentTime + (details.seekOffset || 10));
-    });
-    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-      this.seek(this.audio.currentTime - (details.seekOffset || 10));
-    });
+    try {
+      navigator.mediaSession.setActionHandler('play', () => this.play());
+      navigator.mediaSession.setActionHandler('pause', () => this.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
+      navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime != null) {
+          this.seek(details.seekTime);
+        }
+      });
+      // Explicitly set seekforward and seekbackward to null so iOS Control Center displays Next Track & Previous Track buttons
+      navigator.mediaSession.setActionHandler('seekforward', null);
+      navigator.mediaSession.setActionHandler('seekbackward', null);
+    } catch (e) {
+      console.warn("MediaSession handler error:", e);
+    }
   }
 
   updateMediaSessionMetadata(song, coverUrl) {
