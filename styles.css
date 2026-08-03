@@ -811,6 +811,7 @@ body {
   justify-content: center;
   width: 48px;
   height: 100%;
+  padding-top: 10px;
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s ease;
@@ -829,7 +830,7 @@ body {
 
 .dock-dot {
   position: absolute;
-  bottom: 6px;
+  bottom: 4px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -843,8 +844,8 @@ body {
 }
 
 .center-hero-orb {
-  width: 54px;
-  height: 54px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-neon-1), var(--accent-neon-2), var(--accent-neon-3));
   border: 2px solid rgba(255, 255, 255, 0.6);
@@ -853,14 +854,14 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 0 25px rgba(166, 192, 254, 0.7);
-  transform: translateY(-12px);
+  transform: translateY(-2px);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .center-hero-orb:active {
-  transform: translateY(-8px) scale(0.92);
+  transform: translateY(2px) scale(0.92);
   box-shadow: 0 0 15px rgba(166, 192, 254, 0.4);
 }
 
