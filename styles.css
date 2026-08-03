@@ -775,13 +775,13 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(64px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(48px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(0.25 * env(safe-area-inset-bottom, 0px));
   background: #0d0a17;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 26px 26px 0 0;
+  border-radius: 24px 24px 0 0;
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -809,9 +809,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 100%;
-  padding-top: 10px;
+  width: 46px;
+  height: 48px;
+  padding-top: 0;
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s ease;
@@ -830,7 +830,7 @@ body {
 
 .dock-dot {
   position: absolute;
-  bottom: 4px;
+  bottom: 2px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -844,8 +844,8 @@ body {
 }
 
 .center-hero-orb {
-  width: 50px;
-  height: 50px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-neon-1), var(--accent-neon-2), var(--accent-neon-3));
   border: 2px solid rgba(255, 255, 255, 0.6);
@@ -854,14 +854,14 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 0 25px rgba(166, 192, 254, 0.7);
-  transform: translateY(-2px);
+  transform: translateY(-6px);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .center-hero-orb:active {
-  transform: translateY(2px) scale(0.92);
+  transform: translateY(-2px) scale(0.92);
   box-shadow: 0 0 15px rgba(166, 192, 254, 0.4);
 }
 
