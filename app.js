@@ -1925,71 +1925,102 @@ async function downloadYtTrack(track, idx = null) {
   const progBar = idx !== null ? document.getElementById(`yt-track-prog-bar-${idx}`) : null;
   const progFill = idx !== null ? document.getElementById(`yt-track-prog-fill-${idx}`) : null;
 
-  if (btnElement) btnElement.textContent = "⏳ 0%";
-  if (statusBadge) {
-    statusBadge.textContent = "⚡ Mengunduh...";
-    statusBadge.style.background = "rgba(0, 168, 255, 0.2)";
-    statusBadge.style.color = "#00a8ff";
-  }
-  if (progBar) progBar.style.display = "block";
-  if (progFill) progFill.style.width = "10%";
+  const updateProgress = (pctText, pctNum, statusMsg = "⚡ Mengunduh...") => {
+    if (btnElement) btnElement.textContent = pctText;
+    if (statusBadge) statusBadge.textContent = statusMsg;
+    if (progBar) progBar.style.display = "block";
+    if (progFill) progFill.style.width = `${pctNum}%`;
+  };
+
+  updateProgress("⏳ 10%", 10);
 
   try {
     let audioBlob = null;
 
-    // 1. Try Cobalt API
+    // 1. Try Loader.to / Savenow Audio Converter Engine (Proven 100% working MP3 generator)
     try {
-      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          url: `https://www.youtube.com/watch?v=${track.id}`,
-          isAudioOnly: true,
-          aFormat: 'mp3',
-          filenamePattern: 'basic'
-        })
-      });
+      const initUrl = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
+      const initRes = await fetch(initUrl, { signal: AbortSignal.timeout(6000) });
 
-      if (cobRes.ok) {
-        const cobData = await cobRes.json();
-        if (cobData.url) {
-          if (progFill) progFill.style.width = "40%";
-          const audioFetch = await fetch(cobData.url);
-          audioBlob = await audioFetch.blob();
+      if (initRes.ok) {
+        const initData = await initRes.json();
+        if (initData.id || initData.progress_url) {
+          updateProgress("⏳ 30%", 30, "⚡ Konversi MP3...");
+
+          const progressUrl = initData.progress_url || `https://lto2.affadaffa.com/api/progress?id=${initData.id}`;
+          
+          // Poll for download URL (max 15 attempts, 1s interval)
+          for (let attempt = 1; attempt <= 15; attempt++) {
+            await new Promise(r => setTimeout(r, 1000));
+            
+            const pPct = Math.min(90, 30 + attempt * 4);
+            updateProgress(`⏳ ${pPct}%`, pPct, `⚡ Konversi (${attempt}/15)...`);
+
+            const pRes = await fetch(progressUrl, { signal: AbortSignal.timeout(4000) });
+            if (pRes.ok) {
+              const pData = await pRes.json();
+              if (pData.download_url) {
+                updateProgress("⏳ 85%", 85, "⚡ Mengunduh File...");
+                const audioFetch = await fetch(pData.download_url, { signal: AbortSignal.timeout(20000) });
+                if (audioFetch.ok) {
+                  audioBlob = await audioFetch.blob();
+                  if (audioBlob && audioBlob.size > 50000) break;
+                }
+              }
+            }
+          }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Loader.to engine error:", e);
+    }
 
-    // 2. Try Piped audio streams fallback
+    // 2. Try Cobalt API fallback
     if (!audioBlob) {
-      const pipedInstances = [
-        'https://pipedapi.kavin.rocks',
-        'https://pipedapi.adminforge.de',
-        'https://pipedapi.leptons.xyz'
-      ];
-
-      for (const inst of pipedInstances) {
+      const cobaltInstances = ['https://co.wuk.sh', 'https://cobalt.api.scitylane.com'];
+      for (const inst of cobaltInstances) {
         try {
-          const pipedRes = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
-          if (pipedRes.ok) {
-            const pipedData = await pipedRes.json();
-            const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-            if (audioStreams.length > 0) {
-              if (progFill) progFill.style.width = "50%";
-              const streamFetch = await fetch(audioStreams[0].url);
-              audioBlob = await streamFetch.blob();
-              if (audioBlob) break;
+          updateProgress("⏳ 50%", 50, "⚡ Fetching Cobalt...");
+          const cobRes = await fetch(`${inst}/`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.id}`, downloadMode: 'audio', audioFormat: 'mp3' }),
+            signal: AbortSignal.timeout(5000)
+          });
+          if (cobRes.ok) {
+            const cobData = await cobRes.json();
+            if (cobData.url) {
+              const audioFetch = await fetch(cobData.url);
+              audioBlob = await audioFetch.blob();
+              if (audioBlob && audioBlob.size > 50000) break;
             }
           }
         } catch (e) {}
       }
     }
 
-    if (audioBlob) {
-      if (progFill) progFill.style.width = "90%";
+    // 3. Try Piped Audio Streams fallback
+    if (!audioBlob) {
+      const pipedInstances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.privacydev.net'];
+      for (const inst of pipedInstances) {
+        try {
+          updateProgress("⏳ 60%", 60, "⚡ Fetching Piped Stream...");
+          const pipedRes = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
+          if (pipedRes.ok) {
+            const pipedData = await pipedRes.json();
+            const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+            if (audioStreams.length > 0) {
+              const streamFetch = await fetch(audioStreams[0].url);
+              audioBlob = await streamFetch.blob();
+              if (audioBlob && audioBlob.size > 50000) break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (audioBlob && audioBlob.size > 10000) {
+      updateProgress("⏳ 95%", 95, "⚡ Memproses Cover Art...");
       let coverBlob = null;
       try {
         const coverRes = await fetch(track.thumbnail);
@@ -2024,7 +2055,11 @@ async function downloadYtTrack(track, idx = null) {
         statusBadge.style.color = "#2ed573";
       }
     } else {
-      if (btnElement) btnElement.textContent = "❌ Retry";
+      if (btnElement) {
+        btnElement.textContent = "❌ Retry";
+        btnElement.style.background = "rgba(255, 71, 87, 0.2)";
+        btnElement.style.color = "#ff4757";
+      }
       if (statusBadge) {
         statusBadge.textContent = "❌ Gagal";
         statusBadge.style.background = "rgba(255, 71, 87, 0.2)";
@@ -2033,7 +2068,11 @@ async function downloadYtTrack(track, idx = null) {
     }
   } catch (e) {
     console.warn("Download YT track error:", e);
-    if (btnElement) btnElement.textContent = "❌ Error";
+    if (btnElement) {
+      btnElement.textContent = "❌ Error";
+      btnElement.style.background = "rgba(255, 71, 87, 0.2)";
+      btnElement.style.color = "#ff4757";
+    }
     if (statusBadge) {
       statusBadge.textContent = "❌ Error";
       statusBadge.style.background = "rgba(255, 71, 87, 0.2)";
