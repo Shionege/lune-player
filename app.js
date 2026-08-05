@@ -1937,81 +1937,76 @@ async function downloadYtTrack(track, idx = null) {
   try {
     let audioBlob = null;
 
-    // 1. Try Loader.to / Savenow Audio Converter Engine (Proven 100% working MP3 generator)
-    try {
-      const initUrl = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
-      const initRes = await fetch(initUrl, { signal: AbortSignal.timeout(8000) });
+    // 1. Try Loader.to / Savenow Audio Converter Engine via CORS Proxies
+    const initTarget = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
+    const corsInitUrls = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`,
+      `https://corsproxy.io/?${encodeURIComponent(initTarget)}`,
+      `https://proxy.cors.sh/${initTarget}`,
+      initTarget
+    ];
 
-      if (initRes.ok) {
-        const initData = await initRes.json();
-        if (initData.id || initData.progress_url) {
-          updateProgress("⏳ 20%", 20, "⚡ Konversi MP3...");
+    for (const initUrl of corsInitUrls) {
+      try {
+        const initRes = await fetch(initUrl, { signal: AbortSignal.timeout(8000) });
+        if (initRes.ok) {
+          const initData = await initRes.json();
+          if (initData.id) {
+            updateProgress("⏳ 25%", 25, "⚡ Konversi MP3...");
 
-          const streamId = initData.id;
-          const progressUrls = [
-            initData.progress_url,
-            `https://loader.to/api/progress?id=${streamId}`,
-            `https://lto2.affadaffa.com/api/progress?id=${streamId}`,
-            `https://savenow.to/api/progress?id=${streamId}`
-          ].filter(Boolean);
+            const streamId = initData.id;
+            const rawProgUrl = `https://loader.to/api/progress?id=${streamId}`;
+            const corsProgUrls = [
+              `https://api.allorigins.win/raw?url=${encodeURIComponent(rawProgUrl)}`,
+              `https://corsproxy.io/?${encodeURIComponent(rawProgUrl)}`,
+              rawProgUrl
+            ];
 
-          // Poll for download URL (max 35 attempts, 1s interval)
-          for (let attempt = 1; attempt <= 35; attempt++) {
-            await new Promise(r => setTimeout(r, 1000));
+            for (let attempt = 1; attempt <= 30; attempt++) {
+              await new Promise(r => setTimeout(r, 1000));
+              const pPct = Math.min(88, 25 + Math.round((attempt / 30) * 63));
+              updateProgress(`⏳ ${pPct}%`, pPct, `⚡ Konversi (${attempt}/30)...`);
 
-            const pPct = Math.min(92, 20 + Math.round((attempt / 35) * 72));
-            updateProgress(`⏳ ${pPct}%`, pPct, `⚡ Konversi (${attempt}/35)...`);
+              for (const pUrl of corsProgUrls) {
+                try {
+                  const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(4000) });
+                  if (pRes.ok) {
+                    const pData = await pRes.json();
+                    if (pData.download_url) {
+                      updateProgress("⏳ 90%", 90, "⚡ Mengunduh File MP3...");
 
-            for (const pUrl of progressUrls) {
-              try {
-                const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(4000) });
-                if (pRes.ok) {
-                  const pData = await pRes.json();
-                  if (pData.download_url) {
-                    updateProgress("⏳ 90%", 90, "⚡ Mengunduh File...");
-                    const audioFetch = await fetch(pData.download_url, { signal: AbortSignal.timeout(25000) });
-                    if (audioFetch.ok) {
-                      audioBlob = await audioFetch.blob();
-                      if (audioBlob && audioBlob.size > 50000) break;
+                      const audioUrls = [
+                        pData.download_url,
+                        `https://api.allorigins.win/raw?url=${encodeURIComponent(pData.download_url)}`,
+                        `https://corsproxy.io/?${encodeURIComponent(pData.download_url)}`
+                      ];
+
+                      for (const aUrl of audioUrls) {
+                        try {
+                          const audioFetch = await fetch(aUrl, { signal: AbortSignal.timeout(30000) });
+                          if (audioFetch.ok) {
+                            const candidateBlob = await audioFetch.blob();
+                            if (candidateBlob && candidateBlob.size > 200000) { // Must be real MP3 audio > 200KB!
+                              audioBlob = candidateBlob;
+                              break;
+                            }
+                          }
+                        } catch (e) {}
+                      }
                     }
                   }
-                }
-              } catch (e) {}
+                } catch (e) {}
+                if (audioBlob) break;
+              }
+              if (audioBlob) break;
             }
-
-            if (audioBlob && audioBlob.size > 50000) break;
           }
         }
-      }
-    } catch (e) {
-      console.warn("Loader.to engine error:", e);
+      } catch (e) {}
+      if (audioBlob) break;
     }
 
-    // 2. Try Cobalt API fallback
-    if (!audioBlob) {
-      const cobaltInstances = ['https://co.wuk.sh', 'https://cobalt.api.scitylane.com'];
-      for (const inst of cobaltInstances) {
-        try {
-          updateProgress("⏳ 50%", 50, "⚡ Fetching Cobalt...");
-          const cobRes = await fetch(`${inst}/`, {
-            method: 'POST',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.id}`, downloadMode: 'audio', audioFormat: 'mp3' }),
-            signal: AbortSignal.timeout(5000)
-          });
-          if (cobRes.ok) {
-            const cobData = await cobRes.json();
-            if (cobData.url) {
-              const audioFetch = await fetch(cobData.url);
-              audioBlob = await audioFetch.blob();
-              if (audioBlob && audioBlob.size > 50000) break;
-            }
-          }
-        } catch (e) {}
-      }
-    }
-
-    // 3. Try Piped Audio Streams fallback
+    // 2. Try Piped Audio Streams fallback
     if (!audioBlob) {
       const pipedInstances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.privacydev.net'];
       for (const inst of pipedInstances) {
@@ -2024,22 +2019,15 @@ async function downloadYtTrack(track, idx = null) {
             if (audioStreams.length > 0) {
               const streamFetch = await fetch(audioStreams[0].url);
               audioBlob = await streamFetch.blob();
-              if (audioBlob && audioBlob.size > 50000) break;
+              if (audioBlob && audioBlob.size > 200000) break;
             }
           }
         } catch (e) {}
       }
     }
 
-    // 4. Fallback: Generate offline audio stream if network fails
-    if (!audioBlob || audioBlob.size < 5000) {
-      updateProgress("⏳ 90%", 90, "⚡ Making Offline Track...");
-      try {
-        audioBlob = await generateOfflineFallbackAudioBlob(track.duration || 180);
-      } catch (e) {}
-    }
-
-    if (audioBlob && audioBlob.size > 1000) {
+    // Require REAL audio file > 100KB (No dummy synth fallback!)
+    if (audioBlob && audioBlob.size > 100000) {
       updateProgress("⏳ 95%", 95, "⚡ Memproses Cover Art...");
       let coverBlob = null;
       try {
