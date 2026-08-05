@@ -1754,6 +1754,17 @@ async function fetchYtTracksFromUrl(rawUrl, onProgress = () => {}) {
   } else if (playlistId) {
     onProgress("🔍 Menghubungkan ke API YouTube...", 30);
 
+    // Tier 0: Native Local Server yt-dlp Metadata API
+    try {
+      const nativeRes = await fetch(`/api/yt-metadata?url=${encodeURIComponent(cleanUrl)}`, { signal: AbortSignal.timeout(6000) });
+      if (nativeRes.ok) {
+        const nativeData = await nativeRes.json();
+        if (nativeData && nativeData.tracks && nativeData.tracks.length > 0) {
+          return nativeData.tracks;
+        }
+      }
+    } catch (e) {}
+
     // Tier 1: YouTube Native Youtubei API
     try {
       const res = await fetch('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false', {
@@ -1939,13 +1950,26 @@ async function downloadYtTrack(track, idx = null) {
 
     let directAudioUrl = null;
 
-    // 1. Try Loader.to / Savenow Audio Converter Engine
-    const initTarget = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
-    const corsInitUrls = [
-      initTarget,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`,
-      `https://corsproxy.io/?${encodeURIComponent(initTarget)}`
-    ];
+    // Method 0: Native Backend Server Stream API (/api/yt-stream via yt-dlp)
+    try {
+      updateProgress("⏳ 20%", 20, "⚡ Fetching Native Stream...");
+      const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(25000) });
+      if (nativeRes.ok) {
+        const candidateBlob = await nativeRes.blob();
+        if (candidateBlob && candidateBlob.size > 200000) {
+          audioBlob = candidateBlob;
+        }
+      }
+    } catch (e) {}
+
+    // Method 1: Try Loader.to / Savenow Audio Converter Engine
+    if (!audioBlob) {
+      const initTarget = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
+      const corsInitUrls = [
+        initTarget,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`,
+        `https://corsproxy.io/?${encodeURIComponent(initTarget)}`
+      ];
 
     for (const initUrl of corsInitUrls) {
       try {
@@ -2006,6 +2030,7 @@ async function downloadYtTrack(track, idx = null) {
         }
       } catch (e) {}
       if (audioBlob || directAudioUrl) break;
+    }
     }
 
     // 2. Try Piped Audio Stream Endpoints fallback
