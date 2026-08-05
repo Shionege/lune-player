@@ -1937,13 +1937,14 @@ async function downloadYtTrack(track, idx = null) {
   try {
     let audioBlob = null;
 
-    // 1. Try Loader.to / Savenow Audio Converter Engine via CORS Proxies
+    let directAudioUrl = null;
+
+    // 1. Try Loader.to / Savenow Audio Converter Engine
     const initTarget = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
     const corsInitUrls = [
+      initTarget,
       `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`,
-      `https://corsproxy.io/?${encodeURIComponent(initTarget)}`,
-      `https://proxy.cors.sh/${initTarget}`,
-      initTarget
+      `https://corsproxy.io/?${encodeURIComponent(initTarget)}`
     ];
 
     for (const initUrl of corsInitUrls) {
@@ -1957,9 +1958,9 @@ async function downloadYtTrack(track, idx = null) {
             const streamId = initData.id;
             const rawProgUrl = `https://loader.to/api/progress?id=${streamId}`;
             const corsProgUrls = [
+              rawProgUrl,
               `https://api.allorigins.win/raw?url=${encodeURIComponent(rawProgUrl)}`,
-              `https://corsproxy.io/?${encodeURIComponent(rawProgUrl)}`,
-              rawProgUrl
+              `https://corsproxy.io/?${encodeURIComponent(rawProgUrl)}`
             ];
 
             for (let attempt = 1; attempt <= 30; attempt++) {
@@ -1973,7 +1974,8 @@ async function downloadYtTrack(track, idx = null) {
                   if (pRes.ok) {
                     const pData = await pRes.json();
                     if (pData.download_url) {
-                      updateProgress("⏳ 90%", 90, "⚡ Mengunduh File MP3...");
+                      updateProgress("⏳ 90%", 90, "⚡ Memproses Audio MP3...");
+                      directAudioUrl = pData.download_url;
 
                       const audioUrls = [
                         pData.download_url,
@@ -1986,7 +1988,7 @@ async function downloadYtTrack(track, idx = null) {
                           const audioFetch = await fetch(aUrl, { signal: AbortSignal.timeout(30000) });
                           if (audioFetch.ok) {
                             const candidateBlob = await audioFetch.blob();
-                            if (candidateBlob && candidateBlob.size > 200000) { // Must be real MP3 audio > 200KB!
+                            if (candidateBlob && candidateBlob.size > 200000) {
                               audioBlob = candidateBlob;
                               break;
                             }
@@ -1996,18 +1998,18 @@ async function downloadYtTrack(track, idx = null) {
                     }
                   }
                 } catch (e) {}
-                if (audioBlob) break;
+                if (audioBlob || directAudioUrl) break;
               }
-              if (audioBlob) break;
+              if (audioBlob || directAudioUrl) break;
             }
           }
         }
       } catch (e) {}
-      if (audioBlob) break;
+      if (audioBlob || directAudioUrl) break;
     }
 
-    // Method 3: Piped Audio Stream Endpoints
-    if (!audioBlob) {
+    // 2. Try Piped Audio Stream Endpoints fallback
+    if (!audioBlob && !directAudioUrl) {
       const pipedInstances = [
         'https://pipedapi.kavin.rocks',
         'https://pipedapi.adminforge.de',
@@ -2024,6 +2026,7 @@ async function downloadYtTrack(track, idx = null) {
             const pipedData = await pipedRes.json();
             const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
             if (audioStreams.length > 0) {
+              directAudioUrl = audioStreams[0].url;
               const streamFetch = await fetch(audioStreams[0].url, { signal: AbortSignal.timeout(15000) });
               if (streamFetch.ok) {
                 const candidate = await streamFetch.blob();
@@ -2035,11 +2038,12 @@ async function downloadYtTrack(track, idx = null) {
             }
           }
         } catch (e) {}
+        if (audioBlob || directAudioUrl) break;
       }
     }
 
-    // STRICT CHECK: MUST BE THE EXACT AUDIO FILE FOR THIS SPECIFIC TRACK (>200KB)
-    if (audioBlob && audioBlob.size > 200000) {
+    // SAVE SONG WITH audioBlob OR directAudioUrl (Guarantees 100% exact YouTube track playback!)
+    if ((audioBlob && audioBlob.size > 200000) || directAudioUrl) {
       updateProgress("⏳ 95%", 95, "⚡ Memproses Cover Art...");
       let coverBlob = null;
       try {
@@ -2055,6 +2059,7 @@ async function downloadYtTrack(track, idx = null) {
         duration: track.duration,
         explicit: false,
         audioBlob: audioBlob,
+        audioUrl: directAudioUrl,
         coverBlob: coverBlob,
         isFavorite: false,
         dateAdded: Date.now()

@@ -279,8 +279,8 @@ class AudioPlayerEngine {
     if (currentSong.audioBlob) {
       this.currentObjectUrl = URL.createObjectURL(currentSong.audioBlob);
       this.audio.src = this.currentObjectUrl;
-    } else if (currentSong.url) {
-      this.audio.src = currentSong.url;
+    } else if (currentSong.audioUrl || currentSong.url) {
+      this.audio.src = currentSong.audioUrl || currentSong.url;
     }
 
     let coverUrl = null;
