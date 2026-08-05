@@ -45,26 +45,22 @@ class AudioPlayerEngine {
    * On returning to foreground, resume it so audio keeps playing.
    */
   initVisibilityHandler() {
-    document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'visible') {
-        // App came back to foreground — resume AudioContext if suspended
-        if (this.audioContext && this.audioContext.state === 'suspended') {
-          try {
-            await this.audioContext.resume();
-          } catch (e) {
-            console.warn('AudioContext resume failed:', e);
-          }
-        }
-        // If we were playing before backgrounding, ensure audio is still playing
-        if (this.isPlaying && this.audio.paused) {
-          try {
-            await this.audio.play();
-          } catch (e) {
-            console.warn('Audio resume on foreground failed:', e);
-          }
-        }
+    const handleStateCheck = async () => {
+      if (this.audioContext && this.audioContext.state === 'suspended' && this.isPlaying) {
+        try {
+          await this.audioContext.resume();
+        } catch (e) {}
       }
-    });
+      if (this.isPlaying && this.audio.paused) {
+        try {
+          await this.audio.play();
+        } catch (e) {}
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleStateCheck);
+    window.addEventListener('pagehide', handleStateCheck);
+    window.addEventListener('blur', handleStateCheck);
   }
 
   initAudioContext() {
@@ -110,6 +106,15 @@ class AudioPlayerEngine {
       this.preampNode.connect(this.gainNode);
       this.gainNode.connect(this.limiterNode);
       this.limiterNode.connect(this.audioContext.destination);
+
+      // Auto-resume AudioContext if iOS attempts to suspend it while playing
+      this.audioContext.onstatechange = async () => {
+        if (this.audioContext && this.audioContext.state === 'suspended' && this.isPlaying) {
+          try {
+            await this.audioContext.resume();
+          } catch (e) {}
+        }
+      };
     } catch (e) {
       console.warn("Web Audio API equalizer initialization failed:", e);
     }
@@ -166,37 +171,51 @@ class AudioPlayerEngine {
   setupMediaSession() {
     if (!('mediaSession' in navigator)) return;
 
-    try {
-      navigator.mediaSession.setActionHandler('play', () => this.play());
-      navigator.mediaSession.setActionHandler('pause', () => this.pause());
-      navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
-      navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime != null) {
-          this.seek(details.seekTime);
-        }
-      });
-      // Explicitly set seekforward and seekbackward to null so iOS Control Center displays Next Track & Previous Track buttons
-      navigator.mediaSession.setActionHandler('seekforward', null);
-      navigator.mediaSession.setActionHandler('seekbackward', null);
-    } catch (e) {
-      console.warn("MediaSession handler error:", e);
+    const actionHandlers = [
+      ['play', () => this.play()],
+      ['pause', () => this.pause()],
+      ['previoustrack', () => this.prev()],
+      ['nexttrack', () => this.next()],
+      ['seekto', (details) => {
+        if (details.seekTime != null) this.seek(details.seekTime);
+      }],
+      // Setting seekforward and seekbackward to null forces iOS Control Center to show Previous/Next Track buttons
+      ['seekforward', null],
+      ['seekbackward', null]
+    ];
+
+    for (const [action, handler] of actionHandlers) {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (e) {
+        // Safe catch if browser doesn't support specific action
+      }
     }
   }
 
   updateMediaSessionMetadata(song, coverUrl) {
     if (!('mediaSession' in navigator) || !song) return;
 
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: song.title || 'Unknown Title',
-      artist: song.artist || 'Unknown Artist',
-      album: song.album || 'Lune Player',
-      artwork: coverUrl ? [
-        { src: coverUrl, sizes: '512x512', type: 'image/png' }
-      ] : [
-        { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-      ]
-    });
+    const cleanTitle = (song.title || 'Unknown Title').replace(/\[e\]/gi, '').trim();
+    const artworkSrc = coverUrl || getDefaultCoverUrl(cleanTitle, song.artist);
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: cleanTitle,
+        artist: song.artist || 'Unknown Artist',
+        album: song.album || 'Lune Player',
+        artwork: [
+          { src: artworkSrc, sizes: '96x96', type: 'image/png' },
+          { src: artworkSrc, sizes: '128x128', type: 'image/png' },
+          { src: artworkSrc, sizes: '192x192', type: 'image/png' },
+          { src: artworkSrc, sizes: '256x256', type: 'image/png' },
+          { src: artworkSrc, sizes: '384x384', type: 'image/png' },
+          { src: artworkSrc, sizes: '512x512', type: 'image/png' },
+        ]
+      });
+    } catch (e) {
+      console.warn("MediaMetadata creation error:", e);
+    }
   }
 
   updateMediaSessionState() {
