@@ -1974,19 +1974,17 @@ async function downloadYtTrack(track, idx = null) {
     let audioBlob = null;
     let directAudioUrl = null;
 
-    const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '8080';
-    if (isLocalServer) {
-      try {
-        updateProgress("20%", 20, "Fetching Native Stream...");
-        const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(25000) });
-        if (nativeRes.ok) {
-          const candidateBlob = await nativeRes.blob();
-          if (candidateBlob && candidateBlob.size > 200000) {
-            audioBlob = candidateBlob;
-          }
+    // Method 0: Native Server / Direct API Stream (Downloads FULL 100% Offline MP3 Blob into IndexedDB)
+    try {
+      updateProgress("20%", 20, "Fetching MP3 Audio Blob...");
+      const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(30000) });
+      if (nativeRes.ok) {
+        const candidateBlob = await nativeRes.blob();
+        if (candidateBlob && candidateBlob.size > 200000) {
+          audioBlob = candidateBlob;
         }
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
 
     // Method 1: Try Loader.to / Savenow Audio Converter Engine
     if (!audioBlob) {
@@ -2022,21 +2020,42 @@ async function downloadYtTrack(track, idx = null) {
                     if (pRes.ok) {
                       const pData = await pRes.json();
                       if (pData.download_url) {
-                        updateProgress("95%", 95, "Processing Audio...");
+                        updateProgress("95%", 95, "Downloading MP3 Blob...");
                         directAudioUrl = pData.download_url;
 
-                        try {
-                          const audioFetch = await fetch(pData.download_url, { signal: AbortSignal.timeout(15000) });
-                          if (audioFetch.ok) {
-                            const candidateBlob = await audioFetch.blob();
-                            if (candidateBlob && candidateBlob.size > 200000) {
-                              audioBlob = candidateBlob;
+                        const blobProxies = [
+                          pData.download_url,
+                          `https://api.allorigins.win/raw?url=${encodeURIComponent(pData.download_url)}`,
+                          `https://cors-proxy.htmldev.workers.dev/?url=${encodeURIComponent(pData.download_url)}`
+                        ];
+
+                        for (const bUrl of blobProxies) {
+                          try {
+                            const audioFetch = await fetch(bUrl, { signal: AbortSignal.timeout(25000) });
+                            if (audioFetch.ok) {
+                              const candidateBlob = await audioFetch.blob();
+                              if (candidateBlob && candidateBlob.size > 200000) {
+                                audioBlob = candidateBlob;
+                                break;
+                              }
                             }
-                          }
-                        } catch (e) {}
+                          } catch (e) {}
+                        }
                         break;
                       }
                     }
+                  } catch (e) {}
+                  if (audioBlob || directAudioUrl) break;
+                }
+                if (audioBlob || directAudioUrl) break;
+              }
+            }
+          }
+        } catch (e) {}
+        if (audioBlob || directAudioUrl) break;
+      }
+    }
+
     if (!audioBlob && !directAudioUrl) {
       const pipedInstances = [
         'https://pipedapi.kavin.rocks',
