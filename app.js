@@ -1776,16 +1776,19 @@ async function fetchYtTracksFromUrl(rawUrl, onProgress = () => {}) {
   } else if (playlistId) {
     onProgress("🔍 Menghubungkan ke API YouTube...", 30);
 
-    // Tier 0: Native Local Server yt-dlp Metadata API
-    try {
-      const nativeRes = await fetch(`/api/yt-metadata?url=${encodeURIComponent(cleanUrl)}`, { signal: AbortSignal.timeout(6000) });
-      if (nativeRes.ok) {
-        const nativeData = await nativeRes.json();
-        if (nativeData && nativeData.tracks && nativeData.tracks.length > 0) {
-          return nativeData.tracks;
+    // Tier 0: Native Local Server yt-dlp Metadata API (if running on local Node server)
+    const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '8080';
+    if (isLocalServer) {
+      try {
+        const nativeRes = await fetch(`/api/yt-metadata?url=${encodeURIComponent(rawUrl)}`, { signal: AbortSignal.timeout(6000) });
+        if (nativeRes.ok) {
+          const nativeData = await nativeRes.json();
+          if (nativeData && nativeData.tracks && nativeData.tracks.length > 0) {
+            return nativeData.tracks;
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
     // Tier 1: YouTube Native Youtubei API
     try {
@@ -1969,93 +1972,71 @@ async function downloadYtTrack(track, idx = null) {
 
   try {
     let audioBlob = null;
-
     let directAudioUrl = null;
 
-    // Method 0: Native Backend Server Stream API (/api/yt-stream via yt-dlp)
-    try {
-      updateProgress("20%", 20, "Fetching Audio Stream...");
-      const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(25000) });
-      if (nativeRes.ok) {
-        const candidateBlob = await nativeRes.blob();
-        if (candidateBlob && candidateBlob.size > 200000) {
-          audioBlob = candidateBlob;
+    const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '8080';
+    if (isLocalServer) {
+      try {
+        updateProgress("20%", 20, "Fetching Native Stream...");
+        const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(25000) });
+        if (nativeRes.ok) {
+          const candidateBlob = await nativeRes.blob();
+          if (candidateBlob && candidateBlob.size > 200000) {
+            audioBlob = candidateBlob;
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
 
     // Method 1: Try Loader.to / Savenow Audio Converter Engine
     if (!audioBlob) {
       const initTarget = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
       const corsInitUrls = [
         initTarget,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`,
-        `https://corsproxy.io/?${encodeURIComponent(initTarget)}`
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`
       ];
 
-    for (const initUrl of corsInitUrls) {
-      try {
-        const initRes = await fetch(initUrl, { signal: AbortSignal.timeout(8000) });
-        if (initRes.ok) {
-          const initData = await initRes.json();
-          if (initData.id) {
-            updateProgress("25%", 25, "Converting MP3...");
+      for (const initUrl of corsInitUrls) {
+        try {
+          const initRes = await fetch(initUrl, { signal: AbortSignal.timeout(8000) });
+          if (initRes.ok) {
+            const initData = await initRes.json();
+            if (initData.id) {
+              updateProgress("25%", 25, "Converting MP3...");
 
-            const streamId = initData.id;
-            const rawProgUrl = `https://loader.to/api/progress?id=${streamId}`;
-            const corsProgUrls = [
-              rawProgUrl,
-              `https://api.allorigins.win/raw?url=${encodeURIComponent(rawProgUrl)}`,
-              `https://corsproxy.io/?${encodeURIComponent(rawProgUrl)}`
-            ];
+              const streamId = initData.id;
+              const rawProgUrl = `https://loader.to/api/progress?id=${streamId}`;
+              const corsProgUrls = [
+                rawProgUrl,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(rawProgUrl)}`
+              ];
 
-            for (let attempt = 1; attempt <= 50; attempt++) {
-              await new Promise(r => setTimeout(r, 1000));
-              const pPct = Math.min(92, 25 + Math.round((attempt / 50) * 67));
-              updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/50)...`);
+              for (let attempt = 1; attempt <= 50; attempt++) {
+                await new Promise(r => setTimeout(r, 1000));
+                const pPct = Math.min(92, 25 + Math.round((attempt / 50) * 67));
+                updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/50)...`);
 
-              for (const pUrl of corsProgUrls) {
-                try {
-                  const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(4000) });
-                  if (pRes.ok) {
-                    const pData = await pRes.json();
-                    if (pData.download_url) {
-                      updateProgress("95%", 95, "Processing Audio...");
-                      directAudioUrl = pData.download_url;
+                for (const pUrl of corsProgUrls) {
+                  try {
+                    const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(4000) });
+                    if (pRes.ok) {
+                      const pData = await pRes.json();
+                      if (pData.download_url) {
+                        updateProgress("95%", 95, "Processing Audio...");
+                        directAudioUrl = pData.download_url;
 
-                      const audioUrls = [
-                        pData.download_url,
-                        `https://api.allorigins.win/raw?url=${encodeURIComponent(pData.download_url)}`,
-                        `https://corsproxy.io/?${encodeURIComponent(pData.download_url)}`
-                      ];
-
-                      for (const aUrl of audioUrls) {
                         try {
-                          const audioFetch = await fetch(aUrl, { signal: AbortSignal.timeout(20000) });
+                          const audioFetch = await fetch(pData.download_url, { signal: AbortSignal.timeout(15000) });
                           if (audioFetch.ok) {
                             const candidateBlob = await audioFetch.blob();
                             if (candidateBlob && candidateBlob.size > 200000) {
                               audioBlob = candidateBlob;
-                              break;
                             }
                           }
                         } catch (e) {}
+                        break;
                       }
                     }
-                  }
-                } catch (e) {}
-                if (audioBlob || directAudioUrl) break;
-              }
-              if (audioBlob || directAudioUrl) break;
-            }
-          }
-        }
-      } catch (e) {}
-      if (audioBlob || directAudioUrl) break;
-    }
-    }
-
-    // 2. Try Piped Audio Stream Endpoints fallback
     if (!audioBlob && !directAudioUrl) {
       const pipedInstances = [
         'https://pipedapi.kavin.rocks',
