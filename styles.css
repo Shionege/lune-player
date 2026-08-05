@@ -1461,3 +1461,93 @@ body {
   justify-content: center;
   padding: 20px;
 }
+
+/* Playlist Modal Track Selector & Cover Picker Fixes */
+.modal-song-selector {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  max-height: 260px !important;
+  overflow-y: auto !important;
+  padding: 4px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.track-check-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 14px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.track-check-row:active {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.track-check-row input[type="checkbox"] {
+  width: 20px !important;
+  height: 20px !important;
+  accent-color: #38ef7d !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+}
+
+.playlist-cover-picker {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-top: 12px !important;
+  margin-bottom: 14px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+}
+
+.cover-option-thumb {
+  width: 54px !important;
+  height: 54px !important;
+  max-width: 54px !important;
+  max-height: 54px !important;
+  border-radius: 12px !important;
+  object-fit: cover !important;
+  cursor: pointer !important;
+  border: 2px solid transparent !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.cover-option-thumb.selected {
+  border-color: #38ef7d !important;
+  box-shadow: 0 0 12px rgba(56, 239, 125, 0.4) !important;
+  transform: scale(1.06) !important;
+}
+
+.ios-art-block {
+  width: 90px !important;
+  height: 90px !important;
+  max-width: 90px !important;
+  max-height: 90px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.ios-hero-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 90px !important;
+  max-height: 90px !important;
+  border-radius: 16px !important;
+  object-fit: cover !important;
+}

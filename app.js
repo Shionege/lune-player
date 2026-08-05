@@ -825,7 +825,10 @@ function renderPlaylistCreateTracklist() {
   const trackChecklist = document.getElementById('playlist-track-checklist');
   const selectedPreview = document.getElementById('create-selected-songs-preview');
 
-  trackChecklist.innerHTML = allSongs.map(song => {
+  // Sort songs by latest added first
+  const sortedSongs = [...allSongs].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0));
+
+  trackChecklist.innerHTML = sortedSongs.map(song => {
     const cleanTitle = (song.title || '').replace(/\[e\]/gi, '').trim();
     const coverSrc = safeCreateObjectURL(song.coverBlob, getDefaultCoverUrl(cleanTitle, song.artist));
     const isChecked = selectedSongIdsForPlaylist.has(song.id);
@@ -833,11 +836,12 @@ function renderPlaylistCreateTracklist() {
     return `
       <label class="track-check-row">
         <input type="checkbox" value="${song.id}" class="playlist-song-checkbox" ${isChecked ? 'checked' : ''}>
-        <img src="${coverSrc}" style="width: 36px; height: 36px; border-radius: 8px; object-fit: cover;" alt="">
+        <img src="${coverSrc}" style="width: 40px; height: 40px; border-radius: 10px; object-fit: cover; flex-shrink: 0;" alt="">
         <div style="flex: 1; min-width: 0;">
-          <div style="font-size: 14px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHtml(cleanTitle)}</div>
-          <div style="font-size: 12px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHtml(song.artist)}</div>
+          <div style="font-size: 13px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: var(--text-primary);">${escapeHtml(cleanTitle)}</div>
+          <div style="font-size: 11px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-top: 2px;">${escapeHtml(song.artist)}</div>
         </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">${formatTime(song.duration || 0)}</div>
       </label>
     `;
   }).join('');
@@ -875,7 +879,7 @@ function renderSelectedPreview() {
           <div class="song-title">${escapeHtml(cleanTitle)}</div>
           <div class="song-subtext">${escapeHtml(song.artist)}</div>
         </div>
-        <button class="action-btn" data-remove-id="${song.id}">🗑️</button>
+        <button class="action-btn" data-remove-id="${song.id}" style="color: var(--text-muted);"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
       </div>
     `;
   }).join('');
@@ -1680,23 +1684,41 @@ function initYouTubeDownloader() {
     btnDownloadAll.addEventListener('click', async () => {
       if (fetchedYtTracks.length === 0) return;
       statusContainer.style.display = 'block';
-      
-      for (let i = 0; i < fetchedYtTracks.length; i++) {
-        const t = fetchedYtTracks[i];
-        
-        // Scroll current track into view on mobile screens
-        const trackCard = document.getElementById(`yt-track-card-${i}`);
-        if (trackCard) {
-          trackCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      let completedCount = 0;
+      const totalCount = fetchedYtTracks.length;
+      const CONCURRENCY = 4; // 4 Parallel download slots!
+
+      const updateBatchProgress = () => {
+        statusText.textContent = `Downloading (${completedCount}/${totalCount}) tracks in parallel...`;
+        progressFill.style.width = `${Math.round((completedCount / totalCount) * 100)}%`;
+      };
+
+      updateBatchProgress();
+
+      const queue = fetchedYtTracks.map((t, i) => ({ t, i }));
+
+      const worker = async () => {
+        while (queue.length > 0) {
+          const item = queue.shift();
+          if (!item) break;
+          const { t, i } = item;
+
+          const trackCard = document.getElementById(`yt-track-card-${i}`);
+          if (trackCard) {
+            trackCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+
+          await downloadYtTrack(t, i);
+          completedCount++;
+          updateBatchProgress();
         }
+      };
 
-        statusText.textContent = `⚡ Mengunduh (${i + 1}/${fetchedYtTracks.length}): ${t.title}...`;
-        progressFill.style.width = `${Math.round(((i + 1) / fetchedYtTracks.length) * 100)}%`;
+      const workers = Array.from({ length: Math.min(CONCURRENCY, totalCount) }, () => worker());
+      await Promise.all(workers);
 
-        await downloadYtTrack(t, i);
-      }
-
-      statusText.textContent = `🎉 Seluruh ${fetchedYtTracks.length} MP3 berhasil didownload!`;
+      statusText.textContent = `Completed ${totalCount} MP3 downloads!`;
       await loadLibrarySongs();
     });
   }
@@ -1719,7 +1741,7 @@ function renderYtTracklistUI(tracks) {
           <div class="progress-bar-fill" id="yt-track-prog-fill-${idx}" style="width: 0%;"></div>
         </div>
       </div>
-      <button class="header-action-pill primary" id="yt-btn-track-${idx}" data-yt-idx="${idx}" style="font-size: 11px; padding: 6px 12px; margin-left: 10px; flex-shrink: 0; min-width: 76px; text-align: center;">⚡ MP3</button>
+      <button class="header-action-pill primary" id="yt-btn-track-${idx}" data-yt-idx="${idx}" style="font-size: 11px; padding: 6px 12px; margin-left: 10px; flex-shrink: 0; min-width: 76px; text-align: center;">Download</button>
     </div>
   `).join('');
 
@@ -1936,14 +1958,14 @@ async function downloadYtTrack(track, idx = null) {
   const progBar = idx !== null ? document.getElementById(`yt-track-prog-bar-${idx}`) : null;
   const progFill = idx !== null ? document.getElementById(`yt-track-prog-fill-${idx}`) : null;
 
-  const updateProgress = (pctText, pctNum, statusMsg = "⚡ Mengunduh...") => {
+  const updateProgress = (pctText, pctNum, statusMsg = "Downloading...") => {
     if (btnElement) btnElement.textContent = pctText;
     if (statusBadge) statusBadge.textContent = statusMsg;
     if (progBar) progBar.style.display = "block";
     if (progFill) progFill.style.width = `${pctNum}%`;
   };
 
-  updateProgress("⏳ 10%", 10);
+  updateProgress("10%", 10);
 
   try {
     let audioBlob = null;
@@ -1952,7 +1974,7 @@ async function downloadYtTrack(track, idx = null) {
 
     // Method 0: Native Backend Server Stream API (/api/yt-stream via yt-dlp)
     try {
-      updateProgress("⏳ 20%", 20, "⚡ Fetching Native Stream...");
+      updateProgress("20%", 20, "Fetching Audio Stream...");
       const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(25000) });
       if (nativeRes.ok) {
         const candidateBlob = await nativeRes.blob();
@@ -1977,7 +1999,7 @@ async function downloadYtTrack(track, idx = null) {
         if (initRes.ok) {
           const initData = await initRes.json();
           if (initData.id) {
-            updateProgress("⏳ 25%", 25, "⚡ Konversi MP3...");
+            updateProgress("25%", 25, "Converting MP3...");
 
             const streamId = initData.id;
             const rawProgUrl = `https://loader.to/api/progress?id=${streamId}`;
@@ -1990,7 +2012,7 @@ async function downloadYtTrack(track, idx = null) {
             for (let attempt = 1; attempt <= 30; attempt++) {
               await new Promise(r => setTimeout(r, 1000));
               const pPct = Math.min(88, 25 + Math.round((attempt / 30) * 63));
-              updateProgress(`⏳ ${pPct}%`, pPct, `⚡ Konversi (${attempt}/30)...`);
+              updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/30)...`);
 
               for (const pUrl of corsProgUrls) {
                 try {
@@ -1998,7 +2020,7 @@ async function downloadYtTrack(track, idx = null) {
                   if (pRes.ok) {
                     const pData = await pRes.json();
                     if (pData.download_url) {
-                      updateProgress("⏳ 90%", 90, "⚡ Memproses Audio MP3...");
+                      updateProgress("90%", 90, "Processing Audio...");
                       directAudioUrl = pData.download_url;
 
                       const audioUrls = [
@@ -2045,7 +2067,7 @@ async function downloadYtTrack(track, idx = null) {
 
       for (const inst of pipedInstances) {
         try {
-          updateProgress("⏳ 60%", 60, "⚡ Fetching Stream...");
+          updateProgress("60%", 60, "Fetching Stream...");
           const pipedRes = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
           if (pipedRes.ok) {
             const pipedData = await pipedRes.json();
@@ -2069,7 +2091,7 @@ async function downloadYtTrack(track, idx = null) {
 
     // SAVE SONG WITH audioBlob OR directAudioUrl (Guarantees 100% exact YouTube track playback!)
     if ((audioBlob && audioBlob.size > 200000) || directAudioUrl) {
-      updateProgress("⏳ 95%", 95, "⚡ Memproses Cover Art...");
+      updateProgress("95%", 95, "Processing Cover Art...");
       let coverBlob = null;
       try {
         const coverRes = await fetch(track.thumbnail);
@@ -2095,23 +2117,23 @@ async function downloadYtTrack(track, idx = null) {
 
       if (progFill) progFill.style.width = "100%";
       if (btnElement) {
-        btnElement.textContent = "✓ Selesai";
+        btnElement.textContent = "Done";
         btnElement.style.background = "rgba(46, 213, 115, 0.2)";
         btnElement.style.color = "#2ed573";
       }
       if (statusBadge) {
-        statusBadge.textContent = "✓ Selesai";
+        statusBadge.textContent = "Done";
         statusBadge.style.background = "rgba(46, 213, 115, 0.2)";
         statusBadge.style.color = "#2ed573";
       }
     } else {
       if (btnElement) {
-        btnElement.textContent = "❌ Retry";
+        btnElement.textContent = "Retry";
         btnElement.style.background = "rgba(255, 71, 87, 0.2)";
         btnElement.style.color = "#ff4757";
       }
       if (statusBadge) {
-        statusBadge.textContent = "❌ Gagal";
+        statusBadge.textContent = "Failed";
         statusBadge.style.background = "rgba(255, 71, 87, 0.2)";
         statusBadge.style.color = "#ff4757";
       }
@@ -2119,12 +2141,12 @@ async function downloadYtTrack(track, idx = null) {
   } catch (e) {
     console.warn("Download YT track error:", e);
     if (btnElement) {
-      btnElement.textContent = "❌ Error";
+      btnElement.textContent = "Error";
       btnElement.style.background = "rgba(255, 71, 87, 0.2)";
       btnElement.style.color = "#ff4757";
     }
     if (statusBadge) {
-      statusBadge.textContent = "❌ Error";
+      statusBadge.textContent = "Error";
       statusBadge.style.background = "rgba(255, 71, 87, 0.2)";
       statusBadge.style.color = "#ff4757";
     }

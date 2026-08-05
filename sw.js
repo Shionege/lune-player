@@ -1,4 +1,4 @@
-const CACHE_NAME = 'anywhere-pwa-v57';
+const CACHE_NAME = 'lune-player-v60';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
