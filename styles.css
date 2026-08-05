@@ -1,38 +1,36 @@
 /* ==========================================================================
-   Anywhere - Offline Music Player PWA Design System
-   Theme: Ultra-Dark Glassmorphic iOS 17/18 Concept (Dribbble & Apple Music 1:1 Match)
+   Lune Player - Liquid Glass iOS 27 Design System
+   Minimalist, Ultra-Dark, Liquid Glassmorphism for iOS & Mobile PWA
    ========================================================================== */
 
 :root {
-  --bg-pitch-black: #050507;
-  --glass-bg: rgba(18, 18, 24, 0.94);
-  --glass-bg-subtle: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur: blur(40px) saturate(200%);
-  --accent-indigo: #5e5ce6;
-  --accent-pink: #ff2d55;
-  --accent-neon-1: #a6c0fe;
-  --accent-neon-2: #f68084;
-  --accent-neon-3: #37ecba;
+  --bg-pitch-black: #020204;
+  --glass-bg: rgba(255, 255, 255, 0.035);
+  --glass-bg-hover: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-subtle: rgba(255, 255, 255, 0.04);
+  --glass-blur: blur(50px) saturate(190%);
+  --accent-liquid: #ffffff;
+  --accent-purple: #a855f7;
+  --accent-indigo: #6366f1;
+  --accent-pink: #ec4899;
   
   --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-secondary: rgba(255, 255, 255, 0.55);
   --text-muted: rgba(255, 255, 255, 0.35);
-}
 
-button, .action-btn, .ctrl-btn, .mini-btn-sec, .dock-item {
-  touch-action: manipulation;
-}
-
-:root {
   --nav-dock-height: 64px;
   --mini-player-height: 64px;
-  --border-radius-xl: 28px;
-  --border-radius-lg: 20px;
+  --border-radius-xl: 24px;
+  --border-radius-lg: 18px;
   --border-radius-md: 14px;
   --border-radius-sm: 8px;
 
-  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, sans-serif;
+}
+
+button, .action-btn, .ctrl-btn, .mini-btn-sec, .dock-item, .chip {
+  touch-action: manipulation;
 }
 
 * {
@@ -45,28 +43,25 @@ button, .action-btn, .ctrl-btn, .mini-btn-sec, .dock-item {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-/* Sleek Aesthetic Custom Scrollbar */
+/* Custom Minimal Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
 html {
-  background-color: #0d0a17 !important;
-  background: #0d0a17 !important;
+  background-color: var(--bg-pitch-black) !important;
+  background: var(--bg-pitch-black) !important;
   overscroll-behavior: none;
   overscroll-behavior-y: none;
   height: 100vh;
@@ -79,8 +74,8 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #0d0a17 !important;
-  background: #0d0a17 !important;
+  background-color: var(--bg-pitch-black) !important;
+  background: var(--bg-pitch-black) !important;
   color: var(--text-primary);
   font-family: var(--font-family);
   font-size: 16px;
@@ -97,11 +92,11 @@ body {
   height: 100vh;
   max-width: 480px;
   margin: 0 auto;
-  background-color: #0d0a17;
+  background-color: var(--bg-pitch-black);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95);
 }
 
 @media (min-width: 768px) {
@@ -109,7 +104,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at 50% 50%, #121218 0%, #050507 100%);
+    background: radial-gradient(circle at 50% 50%, #0d0a14 0%, #020204 100%);
   }
   #app-root {
     height: 92vh;
@@ -119,7 +114,7 @@ body {
   }
 }
 
-/* Ambient Background Glow Effects */
+/* Ambient Liquid Background Glow */
 .ambient-glow-container {
   position: absolute;
   top: 0;
@@ -134,45 +129,54 @@ body {
 .glow-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.45;
-  animation: floatOrb 14s ease-in-out infinite alternate;
+  filter: blur(100px);
+  opacity: 0.25;
+  animation: floatOrb 18s ease-in-out infinite alternate;
 }
 
 .glow-orb-1 {
-  width: 280px;
-  height: 280px;
+  width: 320px;
+  height: 320px;
   background: var(--accent-indigo);
-  top: -40px;
+  top: -60px;
   left: -40px;
 }
 
 .glow-orb-2 {
-  width: 320px;
-  height: 320px;
-  background: var(--accent-pink);
-  bottom: 80px;
-  right: -50px;
-  animation-delay: -5s;
+  width: 350px;
+  height: 350px;
+  background: var(--accent-purple);
+  bottom: 60px;
+  right: -60px;
+  animation-delay: -6s;
 }
 
 .glow-orb-3 {
-  width: 240px;
-  height: 240px;
-  background: var(--accent-neon-3);
-  top: 40%;
-  left: 30%;
-  opacity: 0.2;
-  animation-delay: -9s;
+  width: 260px;
+  height: 260px;
+  background: var(--accent-pink);
+  top: 35%;
+  left: 25%;
+  opacity: 0.15;
+  animation-delay: -11s;
 }
 
 @keyframes floatOrb {
   0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(40px, 60px) scale(1.15); }
-  100% { transform: translate(-30px, 30px) scale(0.9); }
+  50% { transform: translate(30px, 50px) scale(1.1); }
+  100% { transform: translate(-25px, 25px) scale(0.92); }
 }
 
-/* Page Scrollable Titles & Subtitles */
+/* Status Bar Spacer & Page Titles */
+.status-bar-spacer {
+  height: env(safe-area-inset-top, 0px);
+  width: 100%;
+  background-color: transparent;
+  flex-shrink: 0;
+  z-index: 1001;
+  pointer-events: none;
+}
+
 .page-title-row {
   display: flex;
   align-items: center;
@@ -188,9 +192,9 @@ body {
 }
 
 .page-title {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.6px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
   color: #ffffff;
   margin: 0;
 }
@@ -201,32 +205,26 @@ body {
   color: var(--text-muted);
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .header-action-pill {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 
 .header-action-pill.primary {
-  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-pink));
+  background: #ffffff;
   border: none;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(255, 45, 85, 0.35);
+  color: #000000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 8px 24px rgba(255, 255, 255, 0.15);
 }
 
 .header-action-pill:active {
@@ -237,7 +235,7 @@ body {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--glass-bg-subtle);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
   display: flex;
@@ -249,17 +247,7 @@ body {
 
 .icon-btn:active {
   transform: scale(0.92);
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* Option A: Status Bar Top Spacer (Locks Notch Top Gap) */
-.status-bar-spacer {
-  height: env(safe-area-inset-top, 0px);
-  width: 100%;
-  background-color: transparent;
-  flex-shrink: 0;
-  z-index: 1001;
-  pointer-events: none;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Main View Containers */
@@ -276,7 +264,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  padding-top: 12px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
   padding-left: 20px;
   padding-right: 20px;
   padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
@@ -307,6 +295,7 @@ body {
   letter-spacing: -0.4px;
 }
 
+/* Search Box & Inputs */
 .search-box {
   position: relative;
   margin-bottom: 16px;
@@ -315,14 +304,15 @@ body {
 .search-input {
   width: 100%;
   padding: 12px 16px 12px 42px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--glass-border);
   border-radius: var(--border-radius-md);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: 14px;
   font-family: inherit;
   outline: none;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
 .search-input::placeholder {
@@ -335,7 +325,8 @@ body {
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
-  font-size: 16px;
+  display: flex;
+  align-items: center;
 }
 
 .filter-chips {
@@ -347,11 +338,11 @@ body {
 }
 
 .chip {
-  padding: 7px 16px;
+  padding: 8px 18px;
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   color: var(--text-secondary);
   cursor: pointer;
@@ -361,8 +352,9 @@ body {
 
 .chip.active {
   background: #ffffff;
-  color: #050507;
+  color: #000000;
   border-color: #ffffff;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.18);
 }
 
 /* Multi-Select Action Bar */
@@ -371,23 +363,10 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(255, 45, 85, 0.15);
-  border: 1px solid rgba(255, 45, 85, 0.3);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--border-radius-md);
   margin-bottom: 14px;
-  animation: fadeIn 0.2s ease;
-}
-
-.song-card.multi-selecting {
-  padding-left: 8px;
-}
-
-.song-card-checkbox {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--accent-pink);
-  margin-right: 6px;
-  cursor: pointer;
 }
 
 .song-list {
@@ -396,36 +375,40 @@ body {
   gap: 8px;
 }
 
+/* Liquid Glass Cards */
 .song-card {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px 12px;
-  border-radius: var(--border-radius-md);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 10px 14px;
+  border-radius: var(--border-radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .song-card:active {
   transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-hover);
 }
 
 .song-card.playing {
-  background: rgba(94, 92, 230, 0.18);
-  border-color: rgba(94, 92, 230, 0.4);
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.35);
 }
 
 .song-art-wrapper {
   position: relative;
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
   overflow: hidden;
   flex-shrink: 0;
-  background: #1a1a24;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .song-art {
@@ -440,7 +423,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(5, 5, 7, 0.5);
+  background: rgba(2, 2, 4, 0.6);
   display: none;
   align-items: center;
   justify-content: center;
@@ -454,7 +437,7 @@ body {
 .wave-bar {
   width: 3.5px;
   height: 16px;
-  background: var(--accent-neon-3);
+  background: #ffffff;
   border-radius: 2px;
   animation: waveAnim 0.8s ease-in-out infinite alternate;
 }
@@ -492,7 +475,7 @@ body {
   font-weight: 800;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
   flex-shrink: 0;
 }
@@ -519,6 +502,9 @@ body {
   font-size: 18px;
   cursor: pointer;
   padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-btn.favorite.active {
@@ -532,44 +518,53 @@ body {
 }
 
 .empty-icon {
-  font-size: 48px;
   margin-bottom: 12px;
   opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .empty-text {
-  font-size: 15px;
+  font-size: 14px;
   margin-bottom: 16px;
 }
 
 .btn-primary {
   padding: 12px 24px;
   border-radius: 24px;
-  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-pink));
-  color: #ffffff;
+  background: #ffffff;
+  color: #000000;
   border: none;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(94, 92, 230, 0.3);
-  transition: transform 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 8px 24px rgba(255, 255, 255, 0.15);
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .btn-primary:active {
   transform: scale(0.95);
+  opacity: 0.9;
 }
 
 .btn-secondary {
   padding: 12px 20px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
+.btn-secondary:active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Liquid Glass Cards */
 .p2p-card {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -579,23 +574,22 @@ body {
   padding: 24px 20px;
   margin-bottom: 20px;
   text-align: center;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
 .pin-display {
-  font-size: 42px;
-  font-weight: 900;
-  letter-spacing: 12px;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: 10px;
   margin: 16px 0;
-  background: linear-gradient(135deg, var(--accent-neon-1), var(--accent-neon-3));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
   font-family: monospace;
 }
 
 .progress-bar-container {
   width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   overflow: hidden;
   margin: 14px 0;
@@ -604,14 +598,14 @@ body {
 .progress-bar-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--accent-indigo), var(--accent-neon-3));
+  background: #ffffff;
   transition: width 0.2s linear;
 }
 
 .drop-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
   border-radius: var(--border-radius-lg);
-  padding: 30px 20px;
+  padding: 26px 20px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -619,11 +613,11 @@ body {
 }
 
 .drop-zone:hover {
-  border-color: var(--accent-neon-1);
+  border-color: rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* 1:1 Apple Music iOS Create Playlist Layout Styles (FULL SCREEN SLIDE-UP FIX) */
+/* Modal Overlay & Card */
 .modal-overlay.full-screen-slide {
   position: absolute;
   top: 0;
@@ -632,7 +626,7 @@ body {
   bottom: 0;
   width: 100%;
   height: 100%;
-  background: #050507;
+  background: var(--bg-pitch-black);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
   z-index: 2500;
@@ -654,7 +648,7 @@ body {
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  background: radial-gradient(circle at 50% 30%, rgba(35, 20, 55, 0.98), #050507 90%);
+  background: var(--bg-pitch-black);
   border: none;
   border-radius: 0;
   padding-top: calc(20px + env(safe-area-inset-top, 0px));
@@ -700,7 +694,7 @@ body {
   width: 100px;
   height: 100px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
@@ -773,8 +767,8 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(94, 92, 230, 0.25);
-  color: #a5a3ff;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -783,20 +777,10 @@ body {
 .ios-add-text {
   font-size: 15px;
   font-weight: 600;
-  color: #a5a3ff;
+  color: #ffffff;
 }
 
-.action-btn.favorite,
-#sheet-btn-favorite,
-[data-action="favorite"] {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  cursor: pointer;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* Edge-to-Edge Bottom Navigation Dock (Mentok ke dagu layar) */
+/* Edge-to-Edge Bottom Navigation Dock */
 .floating-nav-dock {
   position: absolute;
   bottom: 0;
@@ -804,28 +788,27 @@ body {
   right: 0;
   height: calc(64px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: #0d0a17;
+  background: rgba(10, 8, 16, 0.92);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 26px 26px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px 24px 0 0;
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding-left: 12px;
   padding-right: 12px;
   z-index: 1000;
-  box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
 }
 
-/* Solid extension block under bottom dock to 100% eliminate any black safe-area gap on iOS */
 .nav-dock-chin-extension {
   position: absolute;
   bottom: -200px;
   left: -100px;
   right: -100px;
   height: 300px;
-  background: #0d0a17 !important;
+  background: #020204 !important;
   z-index: 998;
   pointer-events: none;
 }
@@ -838,7 +821,6 @@ body {
   justify-content: center;
   width: 48px;
   height: 100%;
-  padding-top: 0;
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s ease;
@@ -874,13 +856,14 @@ body {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-neon-1), var(--accent-neon-2), var(--accent-neon-3));
-  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 0 25px rgba(166, 192, 254, 0.7);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 0 30px rgba(255, 255, 255, 0.15);
   transform: translateY(-10px);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
@@ -889,27 +872,27 @@ body {
 
 .center-hero-orb:active {
   transform: translateY(-6px) scale(0.92);
-  box-shadow: 0 0 15px rgba(166, 192, 254, 0.4);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
-/* Modern Floating Glass Mini Player Widget (Clears Center Hero Orb) */
+/* Floating Glass Mini Player */
 .floating-mini-player {
   position: absolute;
   bottom: calc(var(--nav-dock-height) + 26px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   height: 60px;
-  background: rgba(26, 20, 38, 0.94);
+  background: rgba(18, 16, 26, 0.92);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 18px;
-  display: none; /* DISPLAY NONE BY DEFAULT WHEN UNPLAYED */
+  display: none;
   align-items: center;
   padding: 6px 12px;
   gap: 10px;
   z-index: 1100;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.75), 0 0 20px rgba(94, 92, 230, 0.25);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 16px 36px rgba(0, 0, 0, 0.8);
   cursor: pointer;
   transform: translateY(20px);
   opacity: 0;
@@ -925,11 +908,10 @@ body {
 .mini-art {
   width: 42px;
   height: 42px;
-  border-radius: 8px;
+  border-radius: 10px;
   object-fit: cover;
-  background: #1a1a24;
+  background: rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .mini-info {
@@ -948,7 +930,7 @@ body {
 
 .mini-title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -974,14 +956,14 @@ body {
   height: 40px;
   border-radius: 50%;
   background: #ffffff;
-  color: #050507;
+  color: #000000;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.25);
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .mini-controls .mini-btn-main:active {
@@ -999,7 +981,7 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .mini-controls .mini-btn-sec:hover {
@@ -1009,10 +991,9 @@ body {
 
 .mini-controls .mini-btn-sec:active {
   transform: scale(0.88);
-  color: #ffffff;
 }
 
-/* Now Playing Slide-Up Sheet Overlay (100% Full Screen Native Player) */
+/* Now Playing Slide-Up Sheet Overlay */
 .now-playing-sheet {
   position: absolute;
   top: 0;
@@ -1021,7 +1002,7 @@ body {
   bottom: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% 25%, rgba(35, 20, 55, 0.98), #0d0a17 90%);
+  background: var(--bg-pitch-black);
   backdrop-filter: blur(50px) saturate(210%);
   -webkit-backdrop-filter: blur(50px) saturate(210%);
   z-index: 2000;
@@ -1060,7 +1041,7 @@ body {
   width: 36px;
   height: 5px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.2);
   margin: 0 auto 8px auto;
   cursor: pointer;
 }
@@ -1110,7 +1091,7 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
 }
 
 .sheet-header .ctrl-btn:hover {
@@ -1123,10 +1104,9 @@ body {
 }
 
 .sheet-header .ctrl-btn.active {
-  background: rgba(168, 85, 247, 0.25);
-  border-color: rgba(168, 85, 247, 0.5);
-  color: #c084fc;
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+  color: #ffffff;
 }
 
 .carousel-view-wrapper, .queue-view-wrapper {
@@ -1158,7 +1138,7 @@ body {
 
 .queue-header-label {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 1px;
   color: var(--text-muted);
   margin-bottom: 8px;
@@ -1181,8 +1161,8 @@ body {
 }
 
 .queue-track-row.active {
-  background: rgba(94, 92, 230, 0.2);
-  border: 1px solid rgba(94, 92, 230, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .queue-track-duration {
@@ -1192,14 +1172,14 @@ body {
 }
 
 .sheet-eq-panel {
-  background: rgba(13, 10, 23, 0.92);
+  background: rgba(18, 16, 26, 0.95);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
-  border: 1px solid rgba(168, 85, 247, 0.35);
+  border: 1px solid var(--glass-border);
   border-radius: 20px;
   padding: 16px 18px;
   margin: 10px 0 16px 0;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(168, 85, 247, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
   transform-origin: top center;
   animation: eqSlideDown 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow: hidden;
@@ -1236,11 +1216,11 @@ body {
   position: absolute;
   width: 290px;
   height: 290px;
-  border-radius: 32px;
+  border-radius: 28px;
   object-fit: cover;
-  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95), 0 0 45px rgba(94, 92, 230, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
-  background: #1a1a24;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .carousel-card.center {
@@ -1261,7 +1241,7 @@ body {
   opacity: 0.25;
 }
 
-/* Center-Aligned Metadata & Enlarged Player Icons/Text */
+/* Center Metadata & Seekbar */
 .song-meta-group {
   display: flex;
   flex-direction: column;
@@ -1309,8 +1289,8 @@ body {
 }
 
 .sheet-song-title {
-  font-size: 26px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1319,7 +1299,7 @@ body {
 }
 
 .sheet-song-artist {
-  font-size: 17px;
+  font-size: 16px;
   color: var(--text-secondary);
   margin-top: 4px;
   white-space: nowrap;
@@ -1377,15 +1357,14 @@ body {
 }
 
 .seekbar-thumb.dragging {
-  transform: translate(-50%, -50%) scale(1.6);
-  box-shadow: 0 0 16px var(--accent-pink), 0 0 24px var(--accent-indigo);
+  transform: translate(-50%, -50%) scale(1.5);
   background: #ffffff;
 }
 
 .seekbar-time-row {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
@@ -1404,7 +1383,7 @@ body {
   background: none;
   border: none;
   color: var(--text-primary);
-  font-size: 28px; /* Enlarged icons */
+  font-size: 28px;
   cursor: pointer;
   transition: transform 0.15s ease, color 0.15s ease;
   display: flex;
@@ -1413,7 +1392,7 @@ body {
 }
 
 .ctrl-btn.active {
-  color: var(--accent-neon-3);
+  color: #ffffff;
 }
 
 .ctrl-btn:active {
@@ -1421,16 +1400,15 @@ body {
 }
 
 .ctrl-btn.play-pause-lg {
-  width: 72px; /* Larger play button */
+  width: 72px;
   height: 72px;
   border-radius: 50%;
   background: #ffffff;
-  color: #050507;
+  color: #000000;
   font-size: 28px;
-  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.25);
 }
 
-/* Volume Control Bar Styling */
 .sheet-volume-row {
   display: flex;
   align-items: center;
@@ -1447,7 +1425,7 @@ body {
 .volume-slider {
   flex: 1;
   height: 4px;
-  accent-color: var(--accent-indigo);
+  accent-color: #ffffff;
   cursor: pointer;
 }
 
@@ -1465,7 +1443,7 @@ body {
 
 .eq-slider {
   width: 100%;
-  accent-color: var(--accent-pink);
+  accent-color: #ffffff;
 }
 
 .modal-overlay {
@@ -1474,9 +1452,9 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   z-index: 2000;
   display: flex;
   align-items: center;

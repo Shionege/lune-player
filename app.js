@@ -318,9 +318,11 @@ function renderLibrarySongs() {
           <span style="font-size: 12px; color: var(--text-muted); font-family: monospace; margin-right: 4px;">${formatTime(song.duration)}</span>
           ${!isMultiSelectMode ? `
             <button class="action-btn favorite ${song.isFavorite ? 'active' : ''}" data-action="favorite" data-id="${song.id}">
-              ${song.isFavorite ? '♥' : '♡'}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="${song.isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
-            <button class="action-btn" data-action="delete" data-id="${song.id}">🗑️</button>
+            <button class="action-btn" data-action="delete" data-id="${song.id}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
           ` : ''}
         </div>
       </div>
@@ -1986,13 +1988,13 @@ async function handleFavToggle(e) {
   }
 
   document.querySelectorAll(`[data-action="favorite"][data-id="${songId}"]`).forEach(btn => {
-    btn.textContent = newFavState ? '♥' : '♡';
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="${newFavState ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
     btn.classList.toggle('active', newFavState);
   });
 
   const sheetFavBtn = document.getElementById('sheet-btn-favorite');
   if (sheetFavBtn && currentTrack && String(currentTrack.id) === String(songId)) {
-    sheetFavBtn.textContent = newFavState ? '♥' : '♡';
+    sheetFavBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="${newFavState ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
     sheetFavBtn.classList.toggle('active', newFavState);
   }
 

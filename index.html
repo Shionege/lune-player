@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Lune Player">
-  <meta name="theme-color" content="#0d0a17">
+  <meta name="theme-color" content="#020204">
 
   <title>Lune Player - Offline Music Player</title>
   
@@ -27,14 +27,14 @@
       src: local('SF Pro Display'), local('-apple-system'), local('BlinkMacSystemFont'), local('Segoe UI');
     }
     html, body {
-      background-color: #050507 !important;
+      background-color: #020204 !important;
       color: #ffffff;
       margin: 0;
       padding: 0;
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="stylesheet" href="styles.css?v=56">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -66,7 +66,10 @@
 
         <!-- Wi-Fi P2P Receiver Mode -->
         <div class="p2p-card">
-          <h3>📱 iPhone Receiver Mode</h3>
+          <h3 style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            Receiver Mode
+          </h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
             Open app on Laptop, select Transfer, and enter this 6-digit PIN:
           </p>
@@ -82,14 +85,20 @@
 
           <!-- Receiver Incoming Transfer Queue List UI -->
           <div id="p2p-receiver-queue-container" style="display: none; margin-top: 14px;">
-            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px; text-align: left;">📥 Incoming Music Queue</h4>
+            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px; text-align: left; display: flex; align-items: center; gap: 6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Incoming Queue
+            </h4>
             <div id="p2p-receiver-queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;"></div>
           </div>
         </div>
 
         <!-- Wi-Fi P2P Laptop Sender Mode & Multi-File Queue -->
         <div class="p2p-card">
-          <h3>💻 Laptop Sender Mode</h3>
+          <h3 style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+            Sender Mode
+          </h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
             Enter target PIN generated on iPhone:
           </p>
@@ -100,33 +109,44 @@
           </div>
 
           <div class="drop-zone" id="p2p-send-dropzone" style="display: none; margin-top: 14px;">
-            <div style="font-size: 28px; margin-bottom: 8px;">📲 ➔ 🎵</div>
-            <div style="font-weight: 600; font-size: 14px;">Connected! Click or Drag Multiple MP3s to Transfer</div>
+            <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text-secondary);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+            <div style="font-weight: 600; font-size: 14px;">Connected! Click or Drag Audio Files to Transfer</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Transfers directly over local Wi-Fi</div>
-            <button class="btn-secondary pill-sm" id="btn-p2p-select-files" style="margin-top: 10px;">📤 Select Multiple Audio Files</button>
+            <button class="btn-secondary pill-sm" id="btn-p2p-select-files" style="margin-top: 10px; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Select Files
+            </button>
             <input type="file" id="p2p-multi-file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac" multiple style="display: none;">
           </div>
 
           <!-- Transfer Queue List UI -->
           <div id="p2p-queue-container" style="display: none; margin-top: 14px;">
-            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px;">📋 Transfer Queue</h4>
+            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px; text-align: left;">Transfer Queue</h4>
             <div id="p2p-queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;"></div>
           </div>
         </div>
 
-        <!-- Built-in YouTube / YouTube Music MP3 & Playlist Downloader -->
+        <!-- YouTube Music Downloader -->
         <div class="p2p-card" style="margin-top: 14px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <h3>🎵 YouTube Music Downloader</h3>
-            <span class="badge" style="background: rgba(255, 45, 85, 0.2); color: #ff2d55; font-size: 11px; padding: 3px 8px; border-radius: 10px;">MP3 & Playlist</span>
+            <h3 style="display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+              YouTube Downloader
+            </h3>
+            <span class="badge" style="background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 10px;">MP3 & Playlist</span>
           </div>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; text-align: left;">
             Download lagu atau playlist YouTube Music langsung ke offline library.
           </p>
 
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="yt-url-input" class="search-input" placeholder="Paste YouTube / YT Music URL..." style="font-size: 13px;">
-            <button class="btn-primary" id="btn-yt-fetch" style="white-space: nowrap; font-size: 13px;">🔍 Fetch</button>
+            <input type="text" id="yt-url-input" class="search-input" placeholder="Paste YouTube / YT Music URL..." style="font-size: 13px; margin-bottom: 0;">
+            <button class="btn-primary" id="btn-yt-fetch" style="white-space: nowrap; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Fetch
+            </button>
           </div>
 
           <div id="yt-status-container" style="display: none; margin-top: 12px;">
@@ -136,11 +156,11 @@
             </div>
           </div>
 
-          <!-- YouTube Playlist / Track List Preview -->
+          <!-- YouTube Playlist Preview -->
           <div id="yt-preview-container" style="display: none; margin-top: 14px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
               <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);" id="yt-playlist-count">0 Track Ditemukan</span>
-              <button class="btn-primary pill-sm" id="btn-yt-download-all" style="font-size: 12px;">⚡ Download Semua MP3</button>
+              <button class="btn-primary pill-sm" id="btn-yt-download-all" style="font-size: 12px;">Download Semua</button>
             </div>
             <div id="yt-track-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;"></div>
           </div>
@@ -154,11 +174,14 @@
             <h1 class="page-title">Music Library</h1>
             <span class="page-subtitle" id="library-count">0 Songs</span>
           </div>
-          <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">➕ Import Lagu</button>
+          <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Import
+          </button>
           <input type="file" id="file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac,.ogg,.opus,.webm,.3gp,.3g2,.amr,.wma" multiple style="display: none;">
         </div>
 
-        <!-- Multi-Select Action Bar (Hidden by default) -->
+        <!-- Multi-Select Action Bar -->
         <div class="multi-select-bar" id="library-multi-select-bar" style="display: none;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <button class="btn-secondary pill-sm" id="btn-cancel-multi-select">Batal</button>
@@ -166,12 +189,14 @@
           </div>
           <div style="display: flex; gap: 8px;">
             <button class="btn-secondary pill-sm" id="btn-select-all-library">Pilih Semua</button>
-            <button class="btn-primary pill-sm" id="btn-delete-selected-library" style="background: linear-gradient(135deg, #ff2d55, #ff3b30);">🗑️ Hapus</button>
+            <button class="btn-primary pill-sm" id="btn-delete-selected-library" style="background: rgba(239, 68, 68, 0.9); color: #fff;">Hapus</button>
           </div>
         </div>
 
         <div class="search-box">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
           <input type="text" id="search-library-input" class="search-input" placeholder="Search title, artist, album...">
         </div>
 
@@ -187,7 +212,9 @@
         </div>
 
         <div class="empty-state" id="library-empty" style="display: none;">
-          <div class="empty-icon">🎵</div>
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
           <div class="empty-text">No music in your offline library yet.</div>
           <button class="btn-primary" id="btn-empty-import">Import / Generate Demo</button>
         </div>
@@ -199,8 +226,10 @@
           <h1 class="section-title">Now Playing</h1>
         </div>
         <div class="empty-state">
-          <div class="empty-icon">🔮</div>
-          <div class="empty-text">Tap the Center Glowing Orb below to open full player sheet!</div>
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          </div>
+          <div class="empty-text">Tap the Center Orb below to open full player sheet!</div>
           <button class="btn-primary" id="btn-open-now-playing-sheet">Open Player Sheet</button>
         </div>
       </section>
@@ -211,7 +240,9 @@
         <div id="playlists-main-view">
           <div class="page-title-row">
             <h1 class="page-title">Playlists</h1>
-            <button class="icon-btn" id="btn-create-playlist" title="New Playlist">➕</button>
+            <button class="icon-btn" id="btn-create-playlist" title="New Playlist">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
 
           <div class="song-list" id="playlists-list">
@@ -219,11 +250,12 @@
           </div>
         </div>
 
-        <!-- FULL-PAGE PROPER PLAYLIST DETAIL VIEW (1:1 APPLE MUSIC LAYOUT) -->
+        <!-- Playlist Detail View -->
         <div id="playlists-detail-fullview" style="display: none;">
           <div class="section-header" style="margin-bottom: 12px;">
-            <button class="btn-secondary" id="btn-back-playlist-detail" style="padding: 6px 14px; font-size: 13px;">
-              ← Kembali
+            <button class="btn-secondary" id="btn-back-playlist-detail" style="padding: 6px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              Kembali
             </button>
             <span style="font-size: 13px; color: var(--text-muted);" id="detail-fullview-count">0 Songs</span>
           </div>
@@ -234,9 +266,10 @@
             </div>
             <div class="ios-title-block" style="justify-content: center;">
               <h2 id="detail-fullview-title" style="font-size: 22px; font-weight: 800; color: #ffffff;">Playlist Title</h2>
-              <p style="font-size: 12px; color: var(--text-muted); letter-spacing: 1px; margin-top: 4px;">PLAYLIST</p>
+              <p style="font-size: 11px; color: var(--text-muted); letter-spacing: 1px; margin-top: 4px;">PLAYLIST</p>
               <button class="btn-primary" id="btn-play-all-fullview" style="margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px;">
-                ▶ Play All
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Play All
               </button>
             </div>
           </div>
@@ -253,11 +286,14 @@
           <h1 class="page-title">Settings</h1>
         </div>
 
-        <!-- Google Drive Cloud Sync Card -->
+        <!-- Google Drive Sync Card -->
         <div class="p2p-card" style="text-align: left;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <h3>☁️ Google Drive Sync</h3>
-            <span class="badge" id="gdrive-status-badge" style="background: rgba(255,255,255,0.1); color: var(--text-muted); font-size: 11px; padding: 3px 8px; border-radius: 10px;">Not Connected</span>
+            <h3 style="display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+              Google Drive Sync
+            </h3>
+            <span class="badge" id="gdrive-status-badge" style="background: rgba(255,255,255,0.08); color: var(--text-muted); font-size: 11px; padding: 3px 8px; border-radius: 10px;">Not Connected</span>
           </div>
           <p style="font-size: 13px; color: var(--text-secondary);" id="gdrive-user-info">
             Hubungkan akun Google Drive untuk melakukan Backup & Restore seluruh koleksi lagu secara otomatis.
@@ -265,18 +301,19 @@
 
           <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
             <button class="btn-primary" id="btn-gdrive-connect" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-              🔗 Hubungkan Google Drive (OAuth Popup)
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Hubungkan Google Drive
             </button>
             <button class="btn-secondary" id="btn-gdrive-token-input" style="font-size: 12px; opacity: 0.85;">
-              🔑 Masukkan Access Token / Client ID Manual
+              Masukkan Token Manual
             </button>
 
             <div id="gdrive-actions-group" style="display: none; flex-direction: column; gap: 8px;">
               <div style="display: flex; gap: 8px;">
-                <button class="btn-secondary" id="btn-gdrive-backup" style="flex: 1; font-size: 13px;">📤 Backup Library</button>
-                <button class="btn-secondary" id="btn-gdrive-restore" style="flex: 1; font-size: 13px;">📥 Restore Library</button>
+                <button class="btn-secondary" id="btn-gdrive-backup" style="flex: 1; font-size: 13px;">Backup Library</button>
+                <button class="btn-secondary" id="btn-gdrive-restore" style="flex: 1; font-size: 13px;">Restore Library</button>
               </div>
-              <button class="btn-secondary" id="btn-gdrive-disconnect" style="font-size: 12px; opacity: 0.7; color: #ff453a;">🔌 Putuskan Koneksi</button>
+              <button class="btn-secondary" id="btn-gdrive-disconnect" style="font-size: 12px; color: #ef4444;">Putuskan Koneksi</button>
             </div>
 
             <!-- Progress Bar for Drive Sync -->
@@ -291,15 +328,18 @@
           </div>
         </div>
 
-        <!-- Offline File Backup & Restore Card (Recommended for iOS PWA) -->
+        <!-- Offline File Backup Card -->
         <div class="p2p-card" style="text-align: left;">
-          <h3>📦 Offline Local Backup (iOS Recommended)</h3>
+          <h3 style="display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            Offline Local Backup
+          </h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-            iOS PWA membatasi Google OAuth popup. Gunakan Export/Import JSON untuk backup & restore offline 100% tanpa internet.
+            Export/Import JSON untuk backup & restore offline 100% tanpa internet di iOS PWA.
           </p>
           <div style="margin-top: 12px; display: flex; gap: 8px;">
-            <button class="btn-secondary" id="btn-export-backup" style="flex: 1; font-size: 13px;">📤 Export Backup (.json)</button>
-            <button class="btn-secondary" id="btn-import-backup" style="flex: 1; font-size: 13px;">📥 Import Backup (.json)</button>
+            <button class="btn-secondary" id="btn-export-backup" style="flex: 1; font-size: 13px;">Export (.json)</button>
+            <button class="btn-secondary" id="btn-import-backup" style="flex: 1; font-size: 13px;">Import (.json)</button>
             <input type="file" id="backup-file-input" accept=".json" style="display: none;">
           </div>
         </div>
@@ -315,14 +355,14 @@
           <h3>App Information</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;">
             Lune Player PWA v1.0.0<br>
-            Designed for iOS & Cross-Platform Offline Music Playback.
+            Liquid Glass iOS 27 Design System.
           </p>
         </div>
       </section>
 
     </main>
 
-    <!-- Clean Integrated Mini Player (No Bubble Border, Full Width) -->
+    <!-- Floating Mini Player Widget -->
     <div class="floating-mini-player" id="floating-mini-player">
       <img class="mini-art" id="mini-art-img" alt="">
       <div class="mini-info">
@@ -334,58 +374,48 @@
       </div>
       <div class="mini-controls">
         <button class="action-btn mini-btn-sec" id="mini-btn-prev" title="Previous Track">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
         <button class="action-btn mini-btn-main" id="mini-btn-play" title="Play / Pause">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </button>
         <button class="action-btn mini-btn-sec" id="mini-btn-next" title="Next Track">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- Floating Navigation Dock (Fixed 1000 z-index) -->
+    <!-- Floating Navigation Dock -->
     <nav class="floating-nav-dock">
       <div class="dock-item" data-tab="tab-transfer" title="Wi-Fi Import">
         <span class="dock-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
         </span>
         <div class="dock-dot"></div>
       </div>
 
       <div class="dock-item active" data-tab="tab-library" title="Library">
         <span class="dock-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         </span>
         <div class="dock-dot"></div>
       </div>
 
-      <!-- Center Hero Glowing Wave Orb Button 🔮 -->
+      <!-- Center Hero Liquid Glass Orb Button -->
       <div class="center-hero-orb" id="dock-hero-orb" title="Toggle Player Sheet">
-        <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="14" fill="url(#orbGrad)"/>
-          <path d="M8 17 C 12 12, 20 22, 24 15" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
-          <defs>
-            <linearGradient id="orbGrad" x1="0" y1="0" x2="32" y2="32">
-              <stop offset="0%" stop-color="#37ecba"/>
-              <stop offset="50%" stop-color="#a6c0fe"/>
-              <stop offset="100%" stop-color="#f68084"/>
-            </linearGradient>
-          </defs>
-        </svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
       </div>
 
       <div class="dock-item" data-tab="tab-playlists" title="Playlists">
         <span class="dock-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         </span>
         <div class="dock-dot"></div>
       </div>
 
       <div class="dock-item" data-tab="tab-settings" title="Settings">
         <span class="dock-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </span>
         <div class="dock-dot"></div>
       </div>
@@ -398,7 +428,7 @@
 
       <div class="sheet-header">
         <div style="display: flex; align-items: center; width: 80px;">
-          <button class="ctrl-btn" id="btn-close-sheet" style="font-size: 22px;">
+          <button class="ctrl-btn" id="btn-close-sheet">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </div>
@@ -408,114 +438,117 @@
         </div>
         <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 80px;">
           <button class="ctrl-btn" id="btn-toggle-eq-panel" title="Equalizer Sliders">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
           </button>
-          <button class="ctrl-btn" id="btn-sheet-queue" title="Toggle Up Next Queue">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M4 10h12v2H4zm0-4h12v2H4zm0 8h8v2H4zm15-2l-3-3v2h-4v2h4v2z"/></svg>
+          <button class="ctrl-btn" id="btn-sheet-queue" title="Up Next Queue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
           </button>
         </div>
       </div>
 
-      <!-- Expandable Sleek Glassmorphic Equalizer Panel inside Player Sheet -->
+      <!-- Integrated Equalizer Sliders Panel -->
       <div class="sheet-eq-panel" id="sheet-eq-panel" style="display: none;">
-        <div class="section-header" style="margin-bottom: 10px;">
-          <h4 style="font-size: 14px; font-weight: 700; color: #ffffff;">5-Band Equalizer</h4>
-        </div>
-        <div class="filter-chips" style="margin-bottom: 12px;">
-          <div class="chip active" data-preset="flat">Flat</div>
-          <div class="chip" data-preset="bass">Bass Boost</div>
-          <div class="chip" data-preset="pop">Pop</div>
-          <div class="chip" data-preset="rock">Rock</div>
-          <div class="chip" data-preset="vocal">Vocal</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Integrated Equalizer</span>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-secondary pill-sm eq-preset-btn active" data-preset="flat">Flat</button>
+            <button class="btn-secondary pill-sm eq-preset-btn" data-preset="bass">Bass</button>
+            <button class="btn-secondary pill-sm eq-preset-btn" data-preset="vocal">Vocal</button>
+            <button class="btn-secondary pill-sm eq-preset-btn" data-preset="rock">Rock</button>
+          </div>
         </div>
 
-        <div class="eq-slider-group">
-          <div class="eq-label-row"><span>60 Hz</span><span id="eq-val-0">0 dB</span></div>
-          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="0">
-        </div>
-        <div class="eq-slider-group">
-          <div class="eq-label-row"><span>230 Hz</span><span id="eq-val-1">0 dB</span></div>
-          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="1">
-        </div>
-        <div class="eq-slider-group">
-          <div class="eq-label-row"><span>910 Hz</span><span id="eq-val-2">0 dB</span></div>
-          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="2">
-        </div>
-        <div class="eq-slider-group">
-          <div class="eq-label-row"><span>3.6 kHz</span><span id="eq-val-3">0 dB</span></div>
-          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="3">
-        </div>
-        <div class="eq-slider-group">
-          <div class="eq-label-row"><span>14 kHz</span><span id="eq-val-4">0 dB</span></div>
-          <input type="range" min="-12" max="12" value="0" class="eq-slider" data-band="4">
+        <div class="eq-sliders-container" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+          <div class="eq-slider-group" style="text-align: center;">
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">60Hz</span>
+            <input type="range" min="-12" max="12" value="0" step="1" class="eq-slider" data-band="0" style="writing-mode: vertical-lr; direction: rtl; height: 90px; width: 100%;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-top: 4px; display: block;" id="eq-val-0">0dB</span>
+          </div>
+          <div class="eq-slider-group" style="text-align: center;">
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">230Hz</span>
+            <input type="range" min="-12" max="12" value="0" step="1" class="eq-slider" data-band="1" style="writing-mode: vertical-lr; direction: rtl; height: 90px; width: 100%;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-top: 4px; display: block;" id="eq-val-1">0dB</span>
+          </div>
+          <div class="eq-slider-group" style="text-align: center;">
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">910Hz</span>
+            <input type="range" min="-12" max="12" value="0" step="1" class="eq-slider" data-band="2" style="writing-mode: vertical-lr; direction: rtl; height: 90px; width: 100%;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-top: 4px; display: block;" id="eq-val-2">0dB</span>
+          </div>
+          <div class="eq-slider-group" style="text-align: center;">
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">3.6kHz</span>
+            <input type="range" min="-12" max="12" value="0" step="1" class="eq-slider" data-band="3" style="writing-mode: vertical-lr; direction: rtl; height: 90px; width: 100%;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-top: 4px; display: block;" id="eq-val-3">0dB</span>
+          </div>
+          <div class="eq-slider-group" style="text-align: center;">
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">14kHz</span>
+            <input type="range" min="-12" max="12" value="0" step="1" class="eq-slider" data-band="4" style="writing-mode: vertical-lr; direction: rtl; height: 90px; width: 100%;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--text-secondary); margin-top: 4px; display: block;" id="eq-val-4">0dB</span>
+          </div>
         </div>
       </div>
 
-      <!-- FIXED 310PX HEIGHT MIDDLE CONTAINER -->
-      <div class="player-middle-container" id="player-middle-container">
-        <!-- MODE A: 3D Carousel Album Cards -->
+      <!-- Player Middle Section -->
+      <div class="player-middle-container">
+        <!-- 3D Perspective Carousel Container -->
         <div class="carousel-view-wrapper" id="carousel-view-wrapper">
-          <div class="album-carousel-container">
-            <img class="carousel-card left" id="carousel-left" alt="">
-            <img class="carousel-card center" id="carousel-center" alt="">
-            <img class="carousel-card right" id="carousel-right" alt="">
+          <div class="album-carousel-container" id="album-carousel">
+            <img class="carousel-card left" id="carousel-card-left" alt="">
+            <img class="carousel-card center" id="carousel-card-center" alt="">
+            <img class="carousel-card right" id="carousel-card-right" alt="">
           </div>
         </div>
 
-        <!-- MODE B: Up Next Queue Tracklist View -->
-        <div class="queue-view-wrapper" id="queue-view-wrapper" style="display: none;">
-          <div class="queue-header-label">UP NEXT</div>
-          <div class="song-list" id="sheet-queue-song-list">
-            <!-- Populated dynamically -->
-          </div>
+        <!-- Up Next Queue Slide View -->
+        <div class="queue-view-wrapper hidden-mode" id="queue-view-wrapper">
+          <div class="queue-header-label">UP NEXT QUEUE</div>
+          <div id="sheet-queue-list"></div>
         </div>
       </div>
 
-      <!-- Song Meta (CENTER ALIGNED) -->
+      <!-- Center-Aligned Metadata & Heart Icon -->
       <div class="song-meta-group">
         <div class="meta-text-col">
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;">
-            <h2 class="sheet-song-title" id="sheet-song-title">Belum Ada Lagu</h2>
-            <span class="explicit-badge" id="sheet-explicit-badge" style="display: none;">E</span>
-          </div>
-          <p class="sheet-song-artist" id="sheet-song-artist">Pilih lagu dari library atau buat demo</p>
+          <div class="sheet-song-title" id="sheet-song-title">Pilih Lagu</div>
+          <div class="sheet-song-artist" id="sheet-song-artist">Anywhere Player</div>
+          <span class="explicit-badge" id="sheet-explicit-badge" style="display: none; margin-top: 4px;">EXPLICIT</span>
         </div>
-        <!-- Absolute positioned favorite heart button on the right edge -->
-        <button class="sheet-favorite-btn-meta" id="sheet-btn-favorite" title="Favorite">♡</button>
+        <button class="sheet-favorite-btn-meta" id="sheet-btn-favorite" title="Favorite">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
       </div>
 
-      <!-- Custom Seekbar with Interactive Drag Animations -->
+      <!-- Interactive Scrub Seekbar Row -->
       <div class="seekbar-container">
-        <div class="seekbar-track" id="seekbar-track">
+        <div class="seekbar-track" id="sheet-seekbar-track">
           <div class="seekbar-fill" id="seekbar-fill"></div>
           <div class="seekbar-thumb" id="seekbar-thumb"></div>
         </div>
         <div class="seekbar-time-row">
-          <span id="time-elapsed">2:15</span>
-          <span id="time-remaining">-1:30</span>
+          <span id="time-elapsed">0:00</span>
+          <span id="time-remaining">-0:00</span>
         </div>
       </div>
 
-      <!-- Symmetrical Main Controls Bar (5 buttons: shuffle, prev, play-pause, next, repeat) -->
+      <!-- Controls Bar -->
       <div class="sheet-main-controls">
         <button class="ctrl-btn" id="sheet-btn-shuffle" title="Shuffle Mode">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
         </button>
 
         <button class="ctrl-btn" id="sheet-btn-prev" title="Previous Track">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
 
         <button class="ctrl-btn play-pause-lg" id="sheet-btn-play" title="Play/Pause">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" id="sheet-play-svg-icon"><path d="M8 5v14l11-7z"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" id="sheet-play-svg-icon"><path d="M8 5v14l11-7z"/></svg>
         </button>
 
         <button class="ctrl-btn" id="sheet-btn-next" title="Next Track">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
 
         <button class="ctrl-btn" id="sheet-btn-repeat" title="Repeat Mode">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23 3 19l4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
         </button>
       </div>
 
@@ -532,11 +565,10 @@
       </div>
     </div>
 
-    <!-- Create Playlist Modal (1:1 APPLE MUSIC FULL-SCREEN SLIDE-UP) -->
+    <!-- Create Playlist Modal -->
     <div class="modal-overlay full-screen-slide" id="modal-create-playlist">
       <div class="modal-card ios-playlist-modal-card">
         
-        <!-- Header Top Bar (Cancel Left, Title Center, Create Right) -->
         <div class="ios-modal-header">
           <button class="btn-secondary pill-sm" id="btn-cancel-playlist">Cancel</button>
           <div class="ios-modal-title" id="create-playlist-header-title">Untitled Playlist</div>
@@ -545,7 +577,6 @@
 
         <div class="modal-body" style="padding: 16px 0;">
           
-          <!-- Hero Block (Cover Left + Title Right) -->
           <div class="ios-hero-row">
             <div class="ios-art-block" id="btn-trigger-cover-picker">
               <img class="ios-hero-thumb" id="create-playlist-cover-img" alt="" style="display: none;">
@@ -554,19 +585,15 @@
               </div>
               <span class="ios-caption">tap to edit</span>
             </div>
-
             <div class="ios-title-block">
-              <input type="text" id="playlist-name-input" class="ios-title-input" placeholder="Untitled Playlist" value="Untitled Playlist">
-              <span class="ios-caption">tap to edit</span>
+              <input type="text" id="create-playlist-title-input" class="ios-title-input" placeholder="Playlist Name" autocomplete="off">
             </div>
           </div>
 
-          <!-- Cover Art Selector Options (Expandable) -->
           <div class="playlist-cover-picker" id="playlist-cover-picker" style="display: none; margin-bottom: 14px;">
             <!-- Populated dynamically -->
           </div>
 
-          <!-- Add Music Action Row (⊕ Add Music...) -->
           <div class="ios-add-music-btn" id="btn-trigger-add-music">
             <div class="ios-add-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -574,12 +601,10 @@
             <span class="ios-add-text">Add Music...</span>
           </div>
 
-          <!-- Track Checklist Selector -->
           <div class="modal-song-selector" id="playlist-track-checklist" style="display: none; margin-top: 14px;">
             <!-- Track checkboxes -->
           </div>
 
-          <!-- Preview List of Selected Tracks -->
           <div class="song-list" id="create-selected-songs-preview" style="margin-top: 14px;">
             <!-- Rendered selected tracks -->
           </div>
@@ -592,15 +617,6 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=55"></script>
-
-  <!-- PWA Service Worker Registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=23').catch(err => console.log('SW Reg failed:', err));
-      });
-    }
-  </script>
+  <script type="module" src="app.js?v=56"></script>
 </body>
 </html>
