@@ -78,6 +78,18 @@ class AudioPlayerEngine {
       this.gainNode = this.audioContext.createGain();
       this.gainNode.gain.value = this.audio.volume;
 
+      // Preamp headroom gain node to prevent clipping distortion
+      this.preampNode = this.audioContext.createGain();
+      this.preampNode.gain.value = 1.0;
+
+      // Anti-distortion Limiter / DynamicsCompressor Node
+      this.limiterNode = this.audioContext.createDynamicsCompressor();
+      this.limiterNode.threshold.value = -3.0;
+      this.limiterNode.knee.value = 6.0;
+      this.limiterNode.ratio.value = 12.0;
+      this.limiterNode.attack.value = 0.003;
+      this.limiterNode.release.value = 0.15;
+
       // Frequencies for 5-band EQ
       const frequencies = [60, 230, 910, 3600, 14000];
       let lastNode = this.mediaElementSource;
@@ -93,11 +105,24 @@ class AudioPlayerEngine {
         return filter;
       });
 
-      // Connect the last EQ node to the GainNode, and the GainNode to the destination
-      lastNode.connect(this.gainNode);
-      this.gainNode.connect(this.audioContext.destination);
+      // Route: EQ Filters -> Preamp -> Volume Gain -> Compressor Limiter -> Destination
+      lastNode.connect(this.preampNode);
+      this.preampNode.connect(this.gainNode);
+      this.gainNode.connect(this.limiterNode);
+      this.limiterNode.connect(this.audioContext.destination);
     } catch (e) {
       console.warn("Web Audio API equalizer initialization failed:", e);
+    }
+  }
+
+  updateHeadroom() {
+    if (!this.preampNode || !this.audioContext) return;
+    const maxBoost = Math.max(0, ...this.eqFilters.map(f => f.gain.value));
+    const factor = maxBoost > 0 ? Math.pow(10, -maxBoost / 26) : 1.0;
+    try {
+      this.preampNode.gain.setValueAtTime(factor, this.audioContext.currentTime);
+    } catch (e) {
+      this.preampNode.gain.value = factor;
     }
   }
 
@@ -348,6 +373,7 @@ class AudioPlayerEngine {
     if (this.eqFilters[index]) {
       this.eqFilters[index].gain.value = gainDb;
     }
+    this.updateHeadroom();
   }
 
   applyEQPreset(presetName) {

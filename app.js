@@ -146,25 +146,87 @@ function initTabNavigation() {
   const dockItems = document.querySelectorAll('.dock-item');
   const tabViews = document.querySelectorAll('.tab-view');
   const heroOrb = document.getElementById('dock-hero-orb');
+  const tabOrder = ['tab-transfer', 'tab-library', 'tab-playlists', 'tab-settings'];
+
+  const switchTabById = (targetTabId, animationDuration = '280ms') => {
+    dockItems.forEach((d) => {
+      if (d.dataset.tab === targetTabId) {
+        d.classList.add('active');
+      } else {
+        d.classList.remove('active');
+      }
+    });
+
+    tabViews.forEach((view) => {
+      view.style.transitionDuration = animationDuration;
+      if (view.id === targetTabId) {
+        view.classList.add('active');
+      } else {
+        view.classList.remove('active');
+      }
+    });
+  };
 
   dockItems.forEach((item) => {
     item.addEventListener('click', () => {
       closeNowPlayingSheet();
-
-      const targetTabId = item.dataset.tab;
-
-      dockItems.forEach((d) => d.classList.remove('active'));
-      item.classList.add('active');
-
-      tabViews.forEach((view) => {
-        if (view.id === targetTabId) {
-          view.classList.add('active');
-        } else {
-          view.classList.remove('active');
-        }
-      });
+      switchTabById(item.dataset.tab);
     });
   });
+
+  /* Velocity-based Tab Swipe Touch Gesture */
+  const appRoot = document.getElementById('app-root');
+  if (appRoot) {
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+
+    appRoot.addEventListener('touchstart', (e) => {
+      const sheet = document.getElementById('now-playing-sheet');
+      if (sheet && sheet.classList.contains('open')) return;
+      if (e.touches.length !== 1) return;
+
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startTime = Date.now();
+    }, { passive: true });
+
+    appRoot.addEventListener('touchend', (e) => {
+      const sheet = document.getElementById('now-playing-sheet');
+      if (sheet && sheet.classList.contains('open')) return;
+      if (!e.changedTouches || e.changedTouches.length === 0) return;
+
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const deltaX = endX - startX;
+      const deltaY = endY - startY;
+      const deltaTime = Date.now() - startTime;
+
+      // Ensure horizontal swipe dominant over vertical scroll
+      if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4 && deltaTime > 30) {
+        const velocity = Math.abs(deltaX) / deltaTime; // px per ms
+        const activeTabEl = document.querySelector('.tab-view.active');
+        if (!activeTabEl) return;
+
+        const currentTabId = activeTabEl.id;
+        const currentIdx = tabOrder.indexOf(currentTabId);
+        if (currentIdx === -1) return;
+
+        let nextIdx = currentIdx;
+        if (deltaX < -30 && currentIdx < tabOrder.length - 1) {
+          nextIdx = currentIdx + 1;
+        } else if (deltaX > 30 && currentIdx > 0) {
+          nextIdx = currentIdx - 1;
+        }
+
+        if (nextIdx !== currentIdx) {
+          // Calculate dynamic transition duration based on swipe speed
+          const duration = `${Math.max(120, Math.min(320, Math.round(280 / Math.max(0.5, velocity))))}ms`;
+          switchTabById(tabOrder[nextIdx], duration);
+        }
+      }
+    }, { passive: true });
+  }
 
   /* Center Orb Two-Way Toggle Control */
   heroOrb.addEventListener('click', () => {
@@ -310,6 +372,11 @@ function renderLibrarySongs() {
         updateMultiSelectUI();
         renderLibrarySongs();
       } else {
+        const currentSong = playerEngine.getCurrentSong();
+        if (currentSong && currentSong.id === songId && playerEngine.isPlaying) {
+          openNowPlayingSheet();
+          return;
+        }
         hasUserPlayedAudio = true;
         currentSourcePlaylistName = null;
         playerEngine.setQueue(filteredSongs, index);
@@ -1047,8 +1114,13 @@ function initSheetControls() {
   if (btnToggleEq && sheetEqPanel) {
     btnToggleEq.addEventListener('click', () => {
       const isHidden = sheetEqPanel.style.display === 'none';
-      sheetEqPanel.style.display = isHidden ? 'block' : 'none';
-      btnToggleEq.classList.toggle('active', isHidden);
+      if (isHidden) {
+        sheetEqPanel.style.display = 'block';
+        btnToggleEq.classList.add('active');
+      } else {
+        sheetEqPanel.style.display = 'none';
+        btnToggleEq.classList.remove('active');
+      }
     });
   }
 
@@ -1056,14 +1128,26 @@ function initSheetControls() {
     btnSheetQueue.addEventListener('click', () => {
       if (sheetViewMode === 'carousel') {
         sheetViewMode = 'queue';
-        carouselWrapper.style.display = 'none';
-        queueWrapper.style.display = 'block';
+        carouselWrapper.classList.add('hidden-mode');
+        setTimeout(() => {
+          carouselWrapper.style.display = 'none';
+          queueWrapper.style.display = 'block';
+          requestAnimationFrame(() => {
+            queueWrapper.classList.remove('hidden-mode');
+          });
+        }, 180);
         btnSheetQueue.classList.add('active');
         renderSheetQueueTracklist();
       } else {
         sheetViewMode = 'carousel';
-        carouselWrapper.style.display = 'block';
-        queueWrapper.style.display = 'none';
+        queueWrapper.classList.add('hidden-mode');
+        setTimeout(() => {
+          queueWrapper.style.display = 'none';
+          carouselWrapper.style.display = 'block';
+          requestAnimationFrame(() => {
+            carouselWrapper.classList.remove('hidden-mode');
+          });
+        }, 180);
         btnSheetQueue.classList.remove('active');
       }
     });
@@ -1248,24 +1332,68 @@ function initTransferEvents() {
     if (dropZone) dropZone.style.display = "none";
   };
 
-  peerTransfer.onTransferProgress = (percent, filename) => {
+  const receiverQueueContainer = document.getElementById('p2p-receiver-queue-container');
+  const receiverQueueList = document.getElementById('p2p-receiver-queue-list');
+
+  let receiverFiles = [];
+
+  peerTransfer.onReceiverQueueInit = (files) => {
+    receiverFiles = files;
+    if (receiverQueueContainer) receiverQueueContainer.style.display = 'block';
+    if (receiverQueueList) {
+      receiverQueueList.innerHTML = files.map((f, idx) => `
+        <div id="recv-file-item-${idx}" style="background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div style="min-width: 0; flex: 1;">
+            <div style="font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${f.name}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${(f.size / (1024 * 1024)).toFixed(1)} MB</div>
+            <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 6px; overflow: hidden;">
+              <div id="recv-file-bar-${idx}" style="width: 0%; height: 100%; background: var(--gradient-accent); transition: width 0.1s ease;"></div>
+            </div>
+          </div>
+          <div id="recv-file-status-${idx}" class="pill-badge" style="font-size: 11px; background: rgba(255,255,255,0.1); color: var(--text-muted); padding: 4px 8px; border-radius: 6px; white-space: nowrap;">⏳ Waiting</div>
+        </div>
+      `).join('');
+    }
+  };
+
+  peerTransfer.onTransferProgress = (percent, filename, index = 0, total = 1) => {
     if (progressContainer) progressContainer.style.display = "block";
     if (progressFill) progressFill.style.width = `${percent}%`;
-    if (statusText) statusText.textContent = `Transferring "${filename}": ${percent}%`;
+    if (statusText) statusText.textContent = `Receiving (${index + 1}/${total}) "${filename}": ${percent}%`;
+    
+    // Update individual file bar on receiver UI
+    const fileBar = document.getElementById(`recv-file-bar-${index}`);
+    const fileStatus = document.getElementById(`recv-file-status-${index}`);
+    if (fileBar) fileBar.style.width = `${percent}%`;
+    if (fileStatus) {
+      fileStatus.textContent = `${percent}%`;
+      fileStatus.style.background = 'rgba(168, 85, 247, 0.2)';
+      fileStatus.style.color = '#c084fc';
+    }
+
     if (percent >= 100) {
       setTimeout(() => {
-        if (progressContainer) progressContainer.style.display = "none";
-        if (statusText) statusText.textContent = "Transfer complete!";
+        if (progressContainer && index === total - 1) progressContainer.style.display = "none";
+        if (statusText && index === total - 1) statusText.textContent = "All transfers complete!";
       }, 1500);
     }
   };
 
-  peerTransfer.onFileReceived = async (fileObj) => {
+  peerTransfer.onFileReceived = async (fileObj, index = 0, total = 1) => {
     try {
       const songData = await extractMetadata(fileObj);
       await musicStorage.saveSong(songData);
       await loadLibrarySongs();
-      if (statusText) statusText.textContent = `✓ Received "${songData.title}"!`;
+      if (statusText) statusText.textContent = `✓ Received "${songData.title}" (${index + 1}/${total})!`;
+
+      const fileStatus = document.getElementById(`recv-file-status-${index}`);
+      const fileBar = document.getElementById(`recv-file-bar-${index}`);
+      if (fileBar) fileBar.style.width = '100%';
+      if (fileStatus) {
+        fileStatus.textContent = '✓ Done';
+        fileStatus.style.background = 'rgba(34, 197, 94, 0.2)';
+        fileStatus.style.color = '#4ade80';
+      }
     } catch (e) {
       console.warn("Error saving received file:", e);
     }
@@ -1329,6 +1457,55 @@ function initTransferEvents() {
   peerTransfer.startReceiverMode();
 
   initYouTubeDownloader();
+  initBackupEvents();
+}
+
+function initBackupEvents() {
+  const btnExport = document.getElementById('btn-export-backup');
+  const btnImport = document.getElementById('btn-import-backup');
+  const backupInput = document.getElementById('backup-file-input');
+
+  if (btnExport) {
+    btnExport.addEventListener('click', async () => {
+      try {
+        btnExport.textContent = '⌛ Exporting...';
+        const jsonStr = await musicStorage.exportData();
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `LunePlayer_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        btnExport.textContent = '✓ Exported!';
+        setTimeout(() => { btnExport.textContent = '📤 Export Backup (.json)'; }, 2000);
+      } catch (err) {
+        alert("Export failed: " + err.message);
+        btnExport.textContent = '📤 Export Backup (.json)';
+      }
+    });
+  }
+
+  if (btnImport && backupInput) {
+    btnImport.addEventListener('click', () => backupInput.click());
+    backupInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        btnImport.textContent = '⌛ Importing...';
+        const text = await file.text();
+        await musicStorage.importData(text);
+        await loadLibrarySongs();
+        await loadPlaylists();
+        btnImport.textContent = '✓ Imported!';
+        alert("Library & Playlists restored successfully!");
+        setTimeout(() => { btnImport.textContent = '📥 Import Backup (.json)'; }, 2000);
+      } catch (err) {
+        alert("Import failed: " + err.message);
+        btnImport.textContent = '📥 Import Backup (.json)';
+      }
+    });
+  }
 }
 
 let fetchedYtTracks = [];
@@ -1725,52 +1902,40 @@ function initGDriveSyncUI() {
 /* ==========================================================================
    Global Event Delegation for Favorite / Heart Buttons (Instant 0ms Touch Response)
    ========================================================================== */
-let lastFavToggleTime = 0;
-
 async function handleFavToggle(e) {
   const favBtn = e.target.closest('[data-action="favorite"], #sheet-btn-favorite');
   if (!favBtn) return;
 
-  const now = Date.now();
-  if (now - lastFavToggleTime < 250) {
-    if (e.cancelable) e.preventDefault();
-    e.stopPropagation();
-    return;
-  }
-  lastFavToggleTime = now;
-
-  if (e.cancelable) e.preventDefault();
+  e.preventDefault();
   e.stopPropagation();
 
   const currentTrack = playerEngine.getCurrentSong();
   const songId = favBtn.dataset.id || (currentTrack ? currentTrack.id : null);
   if (!songId) return;
 
+  const songObj = allSongs.find((s) => String(s.id) === String(songId));
+  const newFavState = !(songObj ? songObj.isFavorite : (currentTrack ? currentTrack.isFavorite : false));
+
+  // 1. Instant 0ms Optimistic UI update
+  if (songObj) songObj.isFavorite = newFavState;
+  if (currentTrack && String(currentTrack.id) === String(songId)) {
+    currentTrack.isFavorite = newFavState;
+  }
+
+  document.querySelectorAll(`[data-action="favorite"][data-id="${songId}"]`).forEach(btn => {
+    btn.textContent = newFavState ? '♥' : '♡';
+    btn.classList.toggle('active', newFavState);
+  });
+
+  const sheetFavBtn = document.getElementById('sheet-btn-favorite');
+  if (sheetFavBtn && currentTrack && String(currentTrack.id) === String(songId)) {
+    sheetFavBtn.textContent = newFavState ? '♥' : '♡';
+    sheetFavBtn.classList.toggle('active', newFavState);
+  }
+
+  // 2. Persist state to IndexedDB in background
   try {
-    const isFav = await musicStorage.toggleFavorite(songId);
-
-    // 1. Update in-memory allSongs array
-    const songObj = allSongs.find((s) => String(s.id) === String(songId));
-    if (songObj) songObj.isFavorite = isFav;
-
-    // 2. Update current playing song
-    if (currentTrack && String(currentTrack.id) === String(songId)) {
-      currentTrack.isFavorite = isFav;
-    }
-
-    // 3. Update DOM buttons instantly across the whole document
-    document.querySelectorAll(`[data-action="favorite"][data-id="${songId}"]`).forEach(btn => {
-      btn.textContent = isFav ? '♥' : '♡';
-      btn.classList.toggle('active', isFav);
-    });
-
-    const sheetFavBtn = document.getElementById('sheet-btn-favorite');
-    if (sheetFavBtn && currentTrack && String(currentTrack.id) === String(songId)) {
-      sheetFavBtn.textContent = isFav ? '♥' : '♡';
-      sheetFavBtn.classList.toggle('active', isFav);
-    }
-
-    // 4. Update playlists / filter view if needed
+    await musicStorage.toggleFavorite(songId);
     if (currentFilter === 'favorites') {
       applyFilterAndSearch();
     }
@@ -1779,12 +1944,6 @@ async function handleFavToggle(e) {
     console.error("Global favorite toggle error:", err);
   }
 }
-
-document.addEventListener('pointerdown', (e) => {
-  if (e.target.closest('[data-action="favorite"], #sheet-btn-favorite')) {
-    handleFavToggle(e);
-  }
-}, { passive: false });
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-action="favorite"], #sheet-btn-favorite')) {

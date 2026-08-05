@@ -79,6 +79,12 @@
           <div id="p2p-status-text" style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
             Ready to receive music directly over local Wi-Fi.
           </div>
+
+          <!-- Receiver Incoming Transfer Queue List UI -->
+          <div id="p2p-receiver-queue-container" style="display: none; margin-top: 14px;">
+            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px; text-align: left;">📥 Incoming Music Queue</h4>
+            <div id="p2p-receiver-queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;"></div>
+          </div>
         </div>
 
         <!-- Wi-Fi P2P Laptop Sender Mode & Multi-File Queue -->
@@ -282,6 +288,19 @@
                 Proses Sync...
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Offline File Backup & Restore Card (Recommended for iOS PWA) -->
+        <div class="p2p-card" style="text-align: left;">
+          <h3>📦 Offline Local Backup (iOS Recommended)</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+            iOS PWA membatasi Google OAuth popup. Gunakan Export/Import JSON untuk backup & restore offline 100% tanpa internet.
+          </p>
+          <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <button class="btn-secondary" id="btn-export-backup" style="flex: 1; font-size: 13px;">📤 Export Backup (.json)</button>
+            <button class="btn-secondary" id="btn-import-backup" style="flex: 1; font-size: 13px;">📥 Import Backup (.json)</button>
+            <input type="file" id="backup-file-input" accept=".json" style="display: none;">
           </div>
         </div>
 

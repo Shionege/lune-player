@@ -182,6 +182,63 @@ class MusicStorage {
     });
   }
 
+  async exportData() {
+    await this.ensureDB();
+    const songs = await this.getAllSongs();
+    const playlists = await this.getAllPlaylists();
+
+    const serializedSongs = await Promise.all(songs.map(async (song) => {
+      let audioBase64 = null;
+      if (song.blob) {
+        audioBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(song.blob);
+        });
+      }
+      return {
+        ...song,
+        blob: undefined,
+        audioDataUrl: audioBase64
+      };
+    }));
+
+    return JSON.stringify({
+      version: 1,
+      timestamp: Date.now(),
+      songs: serializedSongs,
+      playlists: playlists
+    }, null, 2);
+  }
+
+  async importData(jsonString) {
+    await this.ensureDB();
+    const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+    if (!data || !Array.isArray(data.songs)) {
+      throw new Error("Invalid backup format.");
+    }
+
+    for (const song of data.songs) {
+      let blob = null;
+      if (song.audioDataUrl) {
+        const res = await fetch(song.audioDataUrl);
+        blob = await res.blob();
+      }
+      const { audioDataUrl, ...rest } = song;
+      await this.saveSong({
+        ...rest,
+        blob: blob || rest.blob
+      });
+    }
+
+    if (Array.isArray(data.playlists)) {
+      for (const pl of data.playlists) {
+        await this.savePlaylist(pl);
+      }
+    }
+    return true;
+  }
+
   async requestPersistentStorage() {
     if (navigator.storage && navigator.storage.persist) {
       try {
