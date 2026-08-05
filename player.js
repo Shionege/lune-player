@@ -73,6 +73,10 @@ class AudioPlayerEngine {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       this.audioContext = new AudioCtx();
       this.mediaElementSource = this.audioContext.createMediaElementSource(this.audio);
+      
+      // Create a GainNode to control volume under Web Audio (necessary for iOS/Safari bug)
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = this.audio.volume;
 
       // Frequencies for 5-band EQ
       const frequencies = [60, 230, 910, 3600, 14000];
@@ -89,7 +93,9 @@ class AudioPlayerEngine {
         return filter;
       });
 
-      lastNode.connect(this.audioContext.destination);
+      // Connect the last EQ node to the GainNode, and the GainNode to the destination
+      lastNode.connect(this.gainNode);
+      this.gainNode.connect(this.audioContext.destination);
     } catch (e) {
       console.warn("Web Audio API equalizer initialization failed:", e);
     }
@@ -304,7 +310,15 @@ class AudioPlayerEngine {
   }
 
   setVolume(val) {
-    this.audio.volume = Math.max(0, Math.min(1, val));
+    const safeVolume = Math.max(0, Math.min(1, val));
+    this.audio.volume = safeVolume;
+    if (this.gainNode) {
+      try {
+        this.gainNode.gain.setValueAtTime(safeVolume, this.audioContext.currentTime);
+      } catch (e) {
+        this.gainNode.gain.value = safeVolume;
+      }
+    }
   }
 
   toggleRepeatMode() {
