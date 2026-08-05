@@ -2025,8 +2025,7 @@ async function downloadYtTrack(track, idx = null) {
 
                         const blobProxies = [
                           pData.download_url,
-                          `https://api.allorigins.win/raw?url=${encodeURIComponent(pData.download_url)}`,
-                          `https://cors-proxy.htmldev.workers.dev/?url=${encodeURIComponent(pData.download_url)}`
+                          `https://api.allorigins.win/raw?url=${encodeURIComponent(pData.download_url)}`
                         ];
 
                         for (const bUrl of blobProxies) {
