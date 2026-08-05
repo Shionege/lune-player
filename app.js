@@ -2009,10 +2009,10 @@ async function downloadYtTrack(track, idx = null) {
               `https://corsproxy.io/?${encodeURIComponent(rawProgUrl)}`
             ];
 
-            for (let attempt = 1; attempt <= 30; attempt++) {
+            for (let attempt = 1; attempt <= 50; attempt++) {
               await new Promise(r => setTimeout(r, 1000));
-              const pPct = Math.min(88, 25 + Math.round((attempt / 30) * 63));
-              updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/30)...`);
+              const pPct = Math.min(92, 25 + Math.round((attempt / 50) * 67));
+              updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/50)...`);
 
               for (const pUrl of corsProgUrls) {
                 try {
@@ -2020,7 +2020,7 @@ async function downloadYtTrack(track, idx = null) {
                   if (pRes.ok) {
                     const pData = await pRes.json();
                     if (pData.download_url) {
-                      updateProgress("90%", 90, "Processing Audio...");
+                      updateProgress("95%", 95, "Processing Audio...");
                       directAudioUrl = pData.download_url;
 
                       const audioUrls = [
@@ -2031,7 +2031,7 @@ async function downloadYtTrack(track, idx = null) {
 
                       for (const aUrl of audioUrls) {
                         try {
-                          const audioFetch = await fetch(aUrl, { signal: AbortSignal.timeout(30000) });
+                          const audioFetch = await fetch(aUrl, { signal: AbortSignal.timeout(20000) });
                           if (audioFetch.ok) {
                             const candidateBlob = await audioFetch.blob();
                             if (candidateBlob && candidateBlob.size > 200000) {
