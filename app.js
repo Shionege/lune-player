@@ -2006,49 +2006,40 @@ async function downloadYtTrack(track, idx = null) {
       if (audioBlob) break;
     }
 
-    // 2. Try Piped Audio Streams fallback
+    // Method 3: Piped Audio Stream Endpoints
     if (!audioBlob) {
-      const pipedInstances = ['https://pipedapi.kavin.rocks', 'https://pipedapi.adminforge.de', 'https://api.piped.privacydev.net'];
+      const pipedInstances = [
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.adminforge.de',
+        'https://api.piped.privacydev.net',
+        'https://pipedapi.colbycloud.us',
+        'https://pipedapi.leptons.xyz'
+      ];
+
       for (const inst of pipedInstances) {
         try {
-          updateProgress("⏳ 60%", 60, "⚡ Fetching Piped Stream...");
+          updateProgress("⏳ 60%", 60, "⚡ Fetching Stream...");
           const pipedRes = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
           if (pipedRes.ok) {
             const pipedData = await pipedRes.json();
             const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
             if (audioStreams.length > 0) {
-              const streamFetch = await fetch(audioStreams[0].url);
-              audioBlob = await streamFetch.blob();
-              if (audioBlob && audioBlob.size > 200000) break;
+              const streamFetch = await fetch(audioStreams[0].url, { signal: AbortSignal.timeout(15000) });
+              if (streamFetch.ok) {
+                const candidate = await streamFetch.blob();
+                if (candidate && candidate.size > 200000) {
+                  audioBlob = candidate;
+                  break;
+                }
+              }
             }
           }
         } catch (e) {}
       }
     }
 
-    // 3. Fallback: High Quality Real Stereo MP3 Audio Stream Pool (Guarantees 100% full-length 3-minute+ MP3 music)
-    if (!audioBlob || audioBlob.size < 100000) {
-      updateProgress("⏳ 80%", 80, "⚡ Mengunduh File MP3...");
-      const realMp3Pool = [
-        'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
-        'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
-        'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3',
-        'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
-        'https://cdn.pixabay.com/download/audio/2022/11/06/audio_c40837e289.mp3'
-      ];
-      const selectedUrl = realMp3Pool[(idx || 0) % realMp3Pool.length];
-      try {
-        const mp3Res = await fetch(selectedUrl, { signal: AbortSignal.timeout(12000) });
-        if (mp3Res.ok) {
-          const candidate = await mp3Res.blob();
-          if (candidate && candidate.size > 300000) { // Real MP3 stereo music > 300KB!
-            audioBlob = candidate;
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (audioBlob && audioBlob.size > 100000) {
+    // STRICT CHECK: MUST BE THE EXACT AUDIO FILE FOR THIS SPECIFIC TRACK (>200KB)
+    if (audioBlob && audioBlob.size > 200000) {
       updateProgress("⏳ 95%", 95, "⚡ Memproses Cover Art...");
       let coverBlob = null;
       try {
