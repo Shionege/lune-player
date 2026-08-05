@@ -267,6 +267,9 @@ class AudioPlayerEngine {
       this.currentIndex = 0;
       this.loadCurrentTrack();
     }
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
+    }
     return this.audio.play();
   }
 

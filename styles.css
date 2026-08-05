@@ -657,10 +657,14 @@ body {
   background: radial-gradient(circle at 50% 30%, rgba(35, 20, 55, 0.98), #050507 90%);
   border: none;
   border-radius: 0;
-  padding: 20px 24px;
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: 24px;
+  padding-right: 24px;
   display: flex;
   flex-direction: column;
   box-shadow: none;
+  overflow-y: auto;
 }
 
 .ios-modal-header {

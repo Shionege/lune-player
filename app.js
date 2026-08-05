@@ -1085,29 +1085,67 @@ function initSheetControls() {
   if (nowPlayingSheetEl) {
     let touchStartY = 0;
     let touchStartX = 0;
+    let touchStartTime = 0;
+    let isDraggingSheet = false;
 
     nowPlayingSheetEl.addEventListener('touchstart', (e) => {
-      touchStartY = e.touches[0].clientY;
-      touchStartX = e.touches[0].clientX;
+      if (nowPlayingSheetEl.scrollTop <= 5) {
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        touchStartTime = Date.now();
+        isDraggingSheet = false;
+      }
     }, { passive: true });
 
     nowPlayingSheetEl.addEventListener('touchmove', (e) => {
-      const sheetHeight = nowPlayingSheetEl.clientHeight || window.innerHeight;
-      // 80% vertical area gesture zone for drag-down-to-close
-      if (touchStartY < sheetHeight * 0.8 && nowPlayingSheetEl.scrollTop <= 10) {
-        const diffY = e.touches[0].clientY - touchStartY;
-        const diffX = Math.abs(e.touches[0].clientX - touchStartX);
-        if (diffY > 50 && diffY > diffX * 1.3) {
-          closeNowPlayingSheet();
-        }
+      if (nowPlayingSheetEl.scrollTop > 5) return;
+      const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
+      const diffY = currentY - touchStartY;
+      const diffX = Math.abs(currentX - touchStartX);
+
+      if (diffY > 10 && diffY > diffX * 1.2) {
+        isDraggingSheet = true;
+        nowPlayingSheetEl.style.transition = 'none';
+        nowPlayingSheetEl.style.transform = `translateY(${Math.max(0, diffY)}px)`;
       }
     }, { passive: true });
+
+    const endSheetDrag = (e) => {
+      if (!isDraggingSheet) return;
+      isDraggingSheet = false;
+      nowPlayingSheetEl.style.transition = '';
+
+      const touchEndY = e.changedTouches ? e.changedTouches[0].clientY : touchStartY;
+      const diffY = touchEndY - touchStartY;
+      const deltaTime = Math.max(1, Date.now() - touchStartTime);
+      const velocity = diffY / deltaTime; // px/ms
+
+      // Threshold: dragged down > 130px OR velocity > 0.45 px/ms
+      if (diffY > 130 || velocity > 0.45) {
+        closeNowPlayingSheet();
+      } else {
+        nowPlayingSheetEl.style.transform = 'translateY(0)';
+      }
+    };
+
+    nowPlayingSheetEl.addEventListener('touchend', endSheetDrag, { passive: true });
+    nowPlayingSheetEl.addEventListener('touchcancel', endSheetDrag, { passive: true });
   }
 
   if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
       const vol = parseFloat(e.target.value);
       playerEngine.setVolume(vol);
+      const percentEl = document.getElementById('sheet-volume-percent');
+      if (percentEl) percentEl.textContent = `${Math.round(vol * 100)}%`;
+    });
+
+    playerEngine.audio.addEventListener('volumechange', () => {
+      const vol = playerEngine.audio.volume;
+      if (volumeSlider) volumeSlider.value = vol;
+      const percentEl = document.getElementById('sheet-volume-percent');
+      if (percentEl) percentEl.textContent = `${Math.round(vol * 100)}%`;
     });
   }
 
@@ -1177,7 +1215,7 @@ function initSheetControls() {
   if (btnRepeat) {
     btnRepeat.addEventListener('click', () => {
       const mode = playerEngine.toggleRepeatMode();
-      btnRepeat.classList.toggle('active', mode !== 'off');
+      updateRepeatButtonUI(mode);
     });
   }
 
@@ -1186,6 +1224,25 @@ function initSheetControls() {
       const isShuffle = playerEngine.toggleShuffle();
       btnShuffle.classList.toggle('active', isShuffle);
     });
+  }
+}
+
+function updateRepeatButtonUI(mode) {
+  const btnRepeat = document.getElementById('sheet-btn-repeat');
+  if (!btnRepeat) return;
+
+  if (mode === 'off') {
+    btnRepeat.classList.remove('active');
+    btnRepeat.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`;
+    btnRepeat.title = "Repeat: Off";
+  } else if (mode === 'all') {
+    btnRepeat.classList.add('active');
+    btnRepeat.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`;
+    btnRepeat.title = "Repeat: Loop Playlist";
+  } else if (mode === 'one') {
+    btnRepeat.classList.add('active');
+    btnRepeat.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><circle cx="12" cy="12" r="5" fill="#a855f7"/><text x="12" y="15" font-size="9" font-weight="900" text-anchor="middle" fill="#ffffff">1</text></svg>`;
+    btnRepeat.title = "Repeat: Loop Track (1)";
   }
 }
 
@@ -1198,11 +1255,17 @@ function openNowPlayingSheet() {
     mini.classList.remove('visible');
     setTimeout(() => { mini.style.display = 'none'; }, 200);
   }
-  document.getElementById('now-playing-sheet').classList.add('open');
+  const sheet = document.getElementById('now-playing-sheet');
+  sheet.style.transform = '';
+  sheet.style.transition = '';
+  sheet.classList.add('open');
 }
 
 function closeNowPlayingSheet() {
-  document.getElementById('now-playing-sheet').classList.remove('open');
+  const sheet = document.getElementById('now-playing-sheet');
+  sheet.style.transform = '';
+  sheet.style.transition = '';
+  sheet.classList.remove('open');
   if (hasUserPlayedAudio) {
     showMiniPlayer();
   }
