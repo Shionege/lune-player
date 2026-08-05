@@ -69,10 +69,23 @@ function initDefaultPlayerUI() {
   if (current) {
     const cleanTitle = (current.title || '').replace(/\[e\]/gi, '').trim();
     const defaultArt = safeCreateObjectURL(current.coverBlob, getDefaultCoverUrl(cleanTitle, current.artist));
+    
+    // Get actual queue/list for previous/next images
+    const queue = playerEngine.queue.length > 0 ? playerEngine.queue : allSongs;
+    const currentIndex = playerEngine.queue.length > 0 ? playerEngine.currentIndex : 0;
+    
+    const prevSong = queue[currentIndex - 1] || queue[queue.length - 1];
+    const prevClean = prevSong ? (prevSong.title || '').replace(/\[e\]/gi, '').trim() : '';
+    const prevArt = safeCreateObjectURL(prevSong?.coverBlob, getDefaultCoverUrl(prevClean, ''));
+    
+    const nextSong = queue[currentIndex + 1] || queue[0];
+    const nextClean = nextSong ? (nextSong.title || '').replace(/\[e\]/gi, '').trim() : '';
+    const nextArt = safeCreateObjectURL(nextSong?.coverBlob, getDefaultCoverUrl(nextClean, ''));
+
     document.getElementById('mini-art-img').src = defaultArt;
     document.getElementById('carousel-center').src = defaultArt;
-    document.getElementById('carousel-left').src = defaultArt;
-    document.getElementById('carousel-right').src = defaultArt;
+    document.getElementById('carousel-left').src = prevArt;
+    document.getElementById('carousel-right').src = nextArt;
     document.getElementById('mini-song-title').textContent = cleanTitle;
     document.getElementById('mini-song-artist').textContent = current.artist;
     document.getElementById('sheet-song-title').textContent = cleanTitle;
