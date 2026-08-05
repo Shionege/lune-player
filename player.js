@@ -176,10 +176,8 @@ class AudioPlayerEngine {
       ['pause', () => this.pause()],
       ['previoustrack', () => this.prev()],
       ['nexttrack', () => this.next()],
-      ['seekto', (details) => {
-        if (details.seekTime != null) this.seek(details.seekTime);
-      }],
-      // Setting seekforward and seekbackward to null forces iOS Control Center to show Previous/Next Track buttons
+      // Unsetting seekto, seekforward, and seekbackward forces iOS Lock Screen & Control Center to render Previous Track and Next Track buttons
+      ['seekto', null],
       ['seekforward', null],
       ['seekbackward', null]
     ];
@@ -188,7 +186,7 @@ class AudioPlayerEngine {
       try {
         navigator.mediaSession.setActionHandler(action, handler);
       } catch (e) {
-        // Safe catch if browser doesn't support specific action
+        // Catch unsupported actions gracefully
       }
     }
   }
@@ -221,16 +219,6 @@ class AudioPlayerEngine {
   updateMediaSessionState() {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
-      // Update position state for iOS lock screen scrubber
-      if (this.audio.duration && isFinite(this.audio.duration)) {
-        try {
-          navigator.mediaSession.setPositionState({
-            duration: this.audio.duration,
-            playbackRate: this.audio.playbackRate,
-            position: this.audio.currentTime,
-          });
-        } catch (e) { /* setPositionState not supported on all browsers */ }
-      }
     }
   }
 
@@ -269,6 +257,7 @@ class AudioPlayerEngine {
       } catch(e) { coverUrl = null; }
     }
 
+    this.setupMediaSession();
     this.updateMediaSessionMetadata(currentSong, coverUrl);
 
     if (this.onTrackChange) {
