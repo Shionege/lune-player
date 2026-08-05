@@ -346,9 +346,14 @@ class AudioPlayerEngine {
   }
 
   setVolume(val) {
-    const safeVolume = Math.max(0, Math.min(1, val));
+    const safeVolume = Math.max(0, Math.min(1, parseFloat(val) || 0));
     this.audio.volume = safeVolume;
-    if (this.gainNode) {
+    
+    if (!this.audioContext) {
+      this.initAudioContext();
+    }
+
+    if (this.gainNode && this.audioContext) {
       try {
         this.gainNode.gain.setValueAtTime(safeVolume, this.audioContext.currentTime);
       } catch (e) {

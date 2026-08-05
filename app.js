@@ -182,8 +182,27 @@ function initTabNavigation() {
 
   dockItems.forEach((item) => {
     item.addEventListener('click', () => {
+      const targetTabId = item.dataset.tab;
+      const currentActiveTab = document.querySelector('.tab-view.active');
+
       closeNowPlayingSheet();
-      switchTabById(item.dataset.tab);
+
+      if (currentActiveTab && currentActiveTab.id === targetTabId) {
+        // Already on this tab -> smooth scroll to top!
+        currentActiveTab.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Special case for Playlists tab: if inside full detail view, return to main playlist list top
+        if (targetTabId === 'tab-playlists') {
+          const detailView = document.getElementById('playlists-detail-fullview');
+          const mainView = document.getElementById('playlists-main-view');
+          if (detailView && detailView.style.display !== 'none') {
+            detailView.style.display = 'none';
+            if (mainView) mainView.style.display = 'block';
+          }
+        }
+      } else {
+        switchTabById(targetTabId);
+      }
     });
   });
 
@@ -1168,12 +1187,14 @@ function initSheetControls() {
   }
 
   if (volumeSlider) {
-    volumeSlider.addEventListener('input', (e) => {
+    const handleVolInput = (e) => {
       const vol = parseFloat(e.target.value);
       playerEngine.setVolume(vol);
       const percentEl = document.getElementById('sheet-volume-percent');
       if (percentEl) percentEl.textContent = `${Math.round(vol * 100)}%`;
-    });
+    };
+    volumeSlider.addEventListener('input', handleVolInput);
+    volumeSlider.addEventListener('change', handleVolInput);
 
     playerEngine.audio.addEventListener('volumechange', () => {
       const vol = playerEngine.audio.volume;
