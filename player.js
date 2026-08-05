@@ -61,6 +61,39 @@ class AudioPlayerEngine {
     document.addEventListener('visibilitychange', handleStateCheck);
     window.addEventListener('pagehide', handleStateCheck);
     window.addEventListener('blur', handleStateCheck);
+    window.addEventListener('freeze', handleStateCheck);
+    window.addEventListener('resume', handleStateCheck);
+  }
+
+  async play() {
+    if (this.currentIndex < 0 || this.queue.length === 0) return;
+    this.initAudioContext();
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+      } catch (e) {}
+    }
+
+    try {
+      await this.audio.play();
+      this.isPlaying = true;
+      this.setupMediaSession();
+      if (this.onPlayStateChange) this.onPlayStateChange(true);
+      
+      // Acquire Web Locks API background lock
+      if ('locks' in navigator) {
+        navigator.locks.request('lune_player_playback', { mode: 'shared' }, () => {
+          return new Promise((resolve) => {
+            this.audio.addEventListener('pause', resolve, { once: true });
+            this.audio.addEventListener('ended', resolve, { once: true });
+          });
+        });
+      }
+    } catch (e) {
+      console.warn("Play interrupted / deferred:", e);
+      this.isPlaying = false;
+      if (this.onPlayStateChange) this.onPlayStateChange(false);
+    }
   }
 
   initAudioContext() {

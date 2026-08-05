@@ -1,12 +1,12 @@
 {
-  "name": "Anywhere - Offline Music Player",
-  "short_name": "Anywhere",
-  "description": "Ultra-Dark Glassmorphic Offline PWA Music Player for iOS and Desktop",
+  "name": "Lune Player",
+  "short_name": "Lune Player",
+  "description": "Liquid Glass Offline Music Player",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d0a17",
-  "theme_color": "#0d0a17",
+  "background_color": "#020204",
+  "theme_color": "#020204",
   "icons": [
     {
       "src": "icons/icon-192.png",

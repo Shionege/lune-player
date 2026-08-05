@@ -1339,7 +1339,7 @@ function updateSheetTrackInfo(song, coverUrl, index) {
     headerPlaylist.textContent = currentSourcePlaylistName;
     headerSubtitle.textContent = "PLAYLIST";
   } else {
-    headerPlaylist.textContent = "Anywhere Player";
+    headerPlaylist.textContent = "Lune Player";
     headerSubtitle.textContent = "NOW PLAYING";
   }
 
@@ -1754,85 +1754,121 @@ async function fetchYtTracksFromUrl(rawUrl, onProgress = () => {}) {
   } else if (playlistId) {
     onProgress("🔍 Menghubungkan ke API YouTube...", 30);
 
-    // Tier 1: Try Piped API instances
-    const pipedInstances = [
-      'https://pipedapi.kavin.rocks',
-      'https://pipedapi.adminforge.de',
-      'https://pipedapi.colbycloud.us',
-      'https://pipedapi.leptons.xyz'
-    ];
+    // Tier 1: YouTube Native Youtubei API
+    try {
+      const res = await fetch('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: 'WEB',
+              clientVersion: '2.20231219.00.00'
+            }
+          },
+          browseId: 'VL' + playlistId
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
 
-    for (const inst of pipedInstances) {
-      try {
-        const res = await fetch(`${inst}/playlists/${playlistId}`, { signal: AbortSignal.timeout(4000) });
-        if (res.ok) {
-          const data = await res.json();
-          const streams = data.relatedStreams || [];
-          if (streams.length > 0) {
-            return streams.map(s => {
-              const vId = s.url ? s.url.replace('/watch?v=', '') : '';
-              return {
-                id: vId,
-                title: s.title || 'YouTube Track',
-                artist: s.uploaderName || 'YouTube Music',
-                duration: s.duration || 210,
-                thumbnail: s.thumbnail || `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
-              };
-            });
-          }
+      if (res.ok) {
+        const data = await res.json();
+        const str = JSON.stringify(data);
+        const matches = [...str.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+        const extracted = [...new Set(matches.map(m => m[1]))];
+        if (extracted.length > 0) {
+          videoIds = extracted;
         }
-      } catch (e) {}
+      }
+    } catch (e) {}
+
+    // Tier 2: Try Piped API instances if videoIds not found yet
+    if (videoIds.length === 0) {
+      const pipedInstances = [
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.adminforge.de',
+        'https://pipedapi.colbycloud.us',
+        'https://pipedapi.leptons.xyz'
+      ];
+
+      for (const inst of pipedInstances) {
+        try {
+          const res = await fetch(`${inst}/playlists/${playlistId}`, { signal: AbortSignal.timeout(4000) });
+          if (res.ok) {
+            const data = await res.json();
+            const streams = data.relatedStreams || [];
+            if (streams.length > 0) {
+              return streams.map(s => {
+                const vId = s.url ? s.url.replace('/watch?v=', '') : '';
+                return {
+                  id: vId,
+                  title: s.title || 'YouTube Track',
+                  artist: s.uploaderName || 'YouTube Music',
+                  duration: s.duration || 210,
+                  thumbnail: s.thumbnail || `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
+                };
+              });
+            }
+          }
+        } catch (e) {}
+      }
     }
 
-    // Tier 2: Try Invidious API instances
-    const invidiousInstances = [
-      'https://invidious.nerdvpn.de',
-      'https://vid.puffyan.us',
-      'https://invidious.drgns.space',
-      'https://inv.tux.pizza'
-    ];
+    // Tier 3: Try Invidious API instances
+    if (videoIds.length === 0) {
+      const invidiousInstances = [
+        'https://invidious.nerdvpn.de',
+        'https://vid.puffyan.us',
+        'https://invidious.drgns.space',
+        'https://inv.tux.pizza'
+      ];
 
-    for (const inst of invidiousInstances) {
-      try {
-        const res = await fetch(`${inst}/api/v1/playlists/${playlistId}`, { signal: AbortSignal.timeout(4000) });
-        if (res.ok) {
-          const data = await res.json();
-          const videos = data.videos || [];
-          if (videos.length > 0) {
-            return videos.map(v => ({
-              id: v.videoId,
-              title: v.title || 'YouTube Track',
-              artist: v.author || 'YouTube Music',
-              duration: v.lengthSeconds || 210,
-              thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
-            }));
+      for (const inst of invidiousInstances) {
+        try {
+          const res = await fetch(`${inst}/api/v1/playlists/${playlistId}`, { signal: AbortSignal.timeout(4000) });
+          if (res.ok) {
+            const data = await res.json();
+            const videos = data.videos || [];
+            if (videos.length > 0) {
+              return videos.map(v => ({
+                id: v.videoId,
+                title: v.title || 'YouTube Track',
+                artist: v.author || 'YouTube Music',
+                duration: v.lengthSeconds || 210,
+                thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
+              }));
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
 
-    // Tier 3: Scrape playlist HTML via CORS Proxies
-    onProgress("🔍 Scanning HTML tracklist playlist...", 50);
+    // Tier 4: Scrape playlist HTML via CORS Proxies
+    if (videoIds.length === 0) {
+      onProgress("🔍 Scanning HTML tracklist playlist...", 50);
 
-    const corsProxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`,
-      `https://corsproxy.io/?${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`
-    ];
+      const corsProxies = [
+        `https://proxy.cors.sh/https://www.youtube.com/playlist?list=${playlistId}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`,
+        `https://corsproxy.io/?${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`
+      ];
 
-    for (const proxyUrl of corsProxies) {
-      try {
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
-        if (res.ok) {
-          const html = await res.text();
-          const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-          const extracted = [...new Set(matches.map(m => m[1]))];
-          if (extracted.length > 0) {
-            videoIds = extracted;
-            break;
+      for (const proxyUrl of corsProxies) {
+        try {
+          const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+          if (res.ok) {
+            const html = await res.text();
+            const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+            const extracted = [...new Set(matches.map(m => m[1]))];
+            if (extracted.length > 0) {
+              videoIds = extracted;
+              break;
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
   }
 
