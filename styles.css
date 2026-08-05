@@ -888,7 +888,7 @@ body {
 /* Modern Floating Glass Mini Player Widget (Clears Center Hero Orb) */
 .floating-mini-player {
   position: absolute;
-  bottom: calc(var(--nav-dock-height) + 20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--nav-dock-height) + 26px + env(safe-area-inset-bottom, 0px));
   left: 12px;
   right: 12px;
   height: 60px;
@@ -1015,6 +1015,7 @@ body {
   z-index: 2000;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
   padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   padding-left: 24px;

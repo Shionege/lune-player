@@ -62,7 +62,7 @@ self.addEventListener('fetch', (event) => {
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
-      });
-    })
+      })
   );
 });
+
