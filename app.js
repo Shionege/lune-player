@@ -1652,58 +1652,13 @@ function initYouTubeDownloader() {
 
     statusContainer.style.display = 'block';
     statusText.textContent = "🔍 Fetching tracklist metadata...";
-    progressFill.style.width = '20%';
+    progressFill.style.width = '25%';
 
     try {
-      let tracks = [];
-      let playlistId = null;
-      let videoId = null;
-
-      if (rawUrl.includes('list=')) {
-        playlistId = rawUrl.split('list=')[1].split('&')[0];
-      } else if (rawUrl.includes('v=')) {
-        videoId = rawUrl.split('v=')[1].split('&')[0];
-      } else if (rawUrl.includes('youtu.be/')) {
-        videoId = rawUrl.split('youtu.be/')[1].split('?')[0];
-      }
-
-      // Fetch via Invidious / Piped API
-      if (playlistId) {
-        const res = await fetch(`https://inv.tux.pizza/api/v1/playlists/${playlistId}`);
-        if (res.ok) {
-          const data = await res.json();
-          tracks = (data.videos || []).map(v => ({
-            id: v.videoId,
-            title: v.title,
-            artist: v.author || 'YouTube Music',
-            duration: v.lengthSeconds || 180,
-            thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
-          }));
-        }
-      } else if (videoId) {
-        const res = await fetch(`https://inv.tux.pizza/api/v1/videos/${videoId}`);
-        if (res.ok) {
-          const data = await res.json();
-          tracks = [{
-            id: data.videoId,
-            title: data.title,
-            artist: data.author || 'YouTube Music',
-            duration: data.lengthSeconds || 180,
-            thumbnail: `https://i.ytimg.com/vi/${data.videoId}/hqdefault.jpg`
-          }];
-        }
-      }
-
-      if (tracks.length === 0 && (videoId || playlistId)) {
-        const vId = videoId || 'dQw4w9WgXcQ';
-        tracks = [{
-          id: vId,
-          title: "YouTube Music Track",
-          artist: "YouTube Music",
-          duration: 210,
-          thumbnail: `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
-        }];
-      }
+      const tracks = await fetchYtTracksFromUrl(rawUrl, (msg, pct) => {
+        statusText.textContent = msg;
+        if (pct) progressFill.style.width = `${pct}%`;
+      });
 
       fetchedYtTracks = tracks;
       progressFill.style.width = '100%';
@@ -1713,23 +1668,7 @@ function initYouTubeDownloader() {
       previewContainer.style.display = 'block';
       playlistCountLabel.textContent = `${tracks.length} Track Ditemukan`;
 
-      trackListContainer.innerHTML = tracks.map((t, idx) => `
-        <div class="song-card" style="padding: 8px 12px; margin-bottom: 0;">
-          <img src="${t.thumbnail}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover; margin-right: 10px;" alt="">
-          <div class="song-info">
-            <div class="song-title" style="font-size: 13px;">${escapeHtml(t.title)}</div>
-            <div class="song-subtext" style="font-size: 11px;">${escapeHtml(t.artist)} • ${formatTime(t.duration)}</div>
-          </div>
-          <button class="header-action-pill primary" data-yt-idx="${idx}" style="font-size: 11px; padding: 4px 10px;">⚡ MP3</button>
-        </div>
-      `).join('');
-
-      trackListContainer.querySelectorAll('[data-yt-idx]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const idx = parseInt(btn.dataset.ytIdx, 10);
-          await downloadYtTrack(fetchedYtTracks[idx], btn);
-        });
-      });
+      renderYtTracklistUI(tracks);
 
     } catch (e) {
       statusText.textContent = `⚠️ Gagal fetch info: ${e.message}`;
@@ -1741,57 +1680,280 @@ function initYouTubeDownloader() {
     btnDownloadAll.addEventListener('click', async () => {
       if (fetchedYtTracks.length === 0) return;
       statusContainer.style.display = 'block';
+      
       for (let i = 0; i < fetchedYtTracks.length; i++) {
         const t = fetchedYtTracks[i];
-        statusText.textContent = `⚡ Downloading (${i + 1}/${fetchedYtTracks.length}): ${t.title}...`;
+        
+        // Scroll current track into view on mobile screens
+        const trackCard = document.getElementById(`yt-track-card-${i}`);
+        if (trackCard) {
+          trackCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        statusText.textContent = `⚡ Mengunduh (${i + 1}/${fetchedYtTracks.length}): ${t.title}...`;
         progressFill.style.width = `${Math.round(((i + 1) / fetchedYtTracks.length) * 100)}%`;
-        await downloadYtTrack(t);
+
+        await downloadYtTrack(t, i);
       }
+
       statusText.textContent = `🎉 Seluruh ${fetchedYtTracks.length} MP3 berhasil didownload!`;
       await loadLibrarySongs();
     });
   }
 }
 
-async function downloadYtTrack(track, btnElement = null) {
-  if (btnElement) btnElement.textContent = "⏳...";
-  try {
-    const cobRes = await fetch('https://api.cobalt.tools/api/json', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: `https://www.youtube.com/watch?v=${track.id}`,
-        isAudioOnly: true,
-        aFormat: 'mp3',
-        filenamePattern: 'basic'
-      })
-    });
+function renderYtTracklistUI(tracks) {
+  const trackListContainer = document.getElementById('yt-track-list');
+  if (!trackListContainer) return;
 
-    let audioBlob = null;
-    if (cobRes.ok) {
-      const cobData = await cobRes.json();
-      if (cobData.url) {
-        const audioFetch = await fetch(cobData.url);
-        audioBlob = await audioFetch.blob();
-      }
+  trackListContainer.innerHTML = tracks.map((t, idx) => `
+    <div class="song-card yt-track-card" id="yt-track-card-${idx}" style="padding: 10px 12px; margin-bottom: 0; display: flex; align-items: center; justify-content: space-between;">
+      <img src="${t.thumbnail}" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 12px; flex-shrink: 0;" alt="" onerror="this.src='${getDefaultCoverUrl()}'">
+      <div class="song-info" style="flex: 1; min-width: 0;">
+        <div class="song-title" style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(t.title)}</div>
+        <div class="song-subtext" style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${escapeHtml(t.artist)}</span>
+          <span id="yt-track-status-${idx}" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); color: var(--text-muted);">Menunggu</span>
+        </div>
+        <div class="progress-bar-container" id="yt-track-prog-bar-${idx}" style="height: 3px; margin-top: 6px; display: none;">
+          <div class="progress-bar-fill" id="yt-track-prog-fill-${idx}" style="width: 0%;"></div>
+        </div>
+      </div>
+      <button class="header-action-pill primary" id="yt-btn-track-${idx}" data-yt-idx="${idx}" style="font-size: 11px; padding: 6px 12px; margin-left: 10px; flex-shrink: 0; min-width: 76px; text-align: center;">⚡ MP3</button>
+    </div>
+  `).join('');
+
+  trackListContainer.querySelectorAll('[data-yt-idx]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.ytIdx, 10);
+      await downloadYtTrack(fetchedYtTracks[idx], idx);
+    });
+  });
+}
+
+async function fetchYtTracksFromUrl(rawUrl, onProgress = () => {}) {
+  let playlistId = null;
+  let videoId = null;
+
+  if (rawUrl.includes('list=')) {
+    playlistId = rawUrl.split('list=')[1].split('&')[0];
+  } else if (rawUrl.includes('v=')) {
+    videoId = rawUrl.split('v=')[1].split('&')[0];
+  } else if (rawUrl.includes('youtu.be/')) {
+    videoId = rawUrl.split('youtu.be/')[1].split('?')[0];
+  }
+
+  if (!playlistId && !videoId) {
+    throw new Error("Format URL tidak valid. Pastikan link berisi ID playlist / video YouTube.");
+  }
+
+  let videoIds = [];
+
+  if (videoId) {
+    videoIds = [videoId];
+  } else if (playlistId) {
+    onProgress("🔍 Menghubungkan ke API YouTube...", 30);
+
+    // Tier 1: Try Piped API instances
+    const pipedInstances = [
+      'https://pipedapi.kavin.rocks',
+      'https://pipedapi.adminforge.de',
+      'https://pipedapi.colbycloud.us',
+      'https://pipedapi.leptons.xyz'
+    ];
+
+    for (const inst of pipedInstances) {
+      try {
+        const res = await fetch(`${inst}/playlists/${playlistId}`, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          const data = await res.json();
+          const streams = data.relatedStreams || [];
+          if (streams.length > 0) {
+            return streams.map(s => {
+              const vId = s.url ? s.url.replace('/watch?v=', '') : '';
+              return {
+                id: vId,
+                title: s.title || 'YouTube Track',
+                artist: s.uploaderName || 'YouTube Music',
+                duration: s.duration || 210,
+                thumbnail: s.thumbnail || `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
+              };
+            });
+          }
+        }
+      } catch (e) {}
     }
 
-    if (!audioBlob) {
-      const pipedRes = await fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
-      if (pipedRes.ok) {
-        const pipedData = await pipedRes.json();
-        const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-        if (audioStreams.length > 0) {
-          const streamFetch = await fetch(audioStreams[0].url);
-          audioBlob = await streamFetch.blob();
+    // Tier 2: Try Invidious API instances
+    const invidiousInstances = [
+      'https://invidious.nerdvpn.de',
+      'https://vid.puffyan.us',
+      'https://invidious.drgns.space',
+      'https://inv.tux.pizza'
+    ];
+
+    for (const inst of invidiousInstances) {
+      try {
+        const res = await fetch(`${inst}/api/v1/playlists/${playlistId}`, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          const data = await res.json();
+          const videos = data.videos || [];
+          if (videos.length > 0) {
+            return videos.map(v => ({
+              id: v.videoId,
+              title: v.title || 'YouTube Track',
+              artist: v.author || 'YouTube Music',
+              duration: v.lengthSeconds || 210,
+              thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
+            }));
+          }
         }
+      } catch (e) {}
+    }
+
+    // Tier 3: Scrape playlist HTML via CORS Proxies
+    onProgress("🔍 Scanning HTML tracklist playlist...", 50);
+
+    const corsProxies = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`,
+      `https://corsproxy.io/?${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent('https://www.youtube.com/playlist?list=' + playlistId)}`
+    ];
+
+    for (const proxyUrl of corsProxies) {
+      try {
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const html = await res.text();
+          const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+          const extracted = [...new Set(matches.map(m => m[1]))];
+          if (extracted.length > 0) {
+            videoIds = extracted;
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  if (videoIds.length === 0) {
+    throw new Error("Gagal mengambil metadata. Pastikan playlist publik.");
+  }
+
+  onProgress(`🔍 Memuat judul ${videoIds.length} lagu...`, 70);
+
+  // Batch resolve oEmbed metadata in chunks of 5 parallel requests
+  const tracks = [];
+  const chunkSize = 5;
+
+  for (let i = 0; i < videoIds.length; i += chunkSize) {
+    const chunk = videoIds.slice(i, i + chunkSize);
+    const chunkPromises = chunk.map(async (id) => {
+      try {
+        const omRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`, { signal: AbortSignal.timeout(3000) });
+        if (omRes.ok) {
+          const data = await omRes.json();
+          let title = data.title || 'YouTube Track';
+          let artist = data.author_name || 'YouTube Music';
+          if (artist.endsWith(' - Topic')) artist = artist.replace(' - Topic', '');
+
+          return {
+            id,
+            title,
+            artist,
+            duration: 210,
+            thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+          };
+        }
+      } catch (e) {}
+
+      return {
+        id,
+        title: `YouTube Track (${id})`,
+        artist: 'YouTube Music',
+        duration: 210,
+        thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+      };
+    });
+
+    const resolvedChunk = await Promise.all(chunkPromises);
+    tracks.push(...resolvedChunk);
+  }
+
+  return tracks;
+}
+
+async function downloadYtTrack(track, idx = null) {
+  const btnElement = idx !== null ? document.getElementById(`yt-btn-track-${idx}`) : null;
+  const statusBadge = idx !== null ? document.getElementById(`yt-track-status-${idx}`) : null;
+  const progBar = idx !== null ? document.getElementById(`yt-track-prog-bar-${idx}`) : null;
+  const progFill = idx !== null ? document.getElementById(`yt-track-prog-fill-${idx}`) : null;
+
+  if (btnElement) btnElement.textContent = "⏳ 0%";
+  if (statusBadge) {
+    statusBadge.textContent = "⚡ Mengunduh...";
+    statusBadge.style.background = "rgba(0, 168, 255, 0.2)";
+    statusBadge.style.color = "#00a8ff";
+  }
+  if (progBar) progBar.style.display = "block";
+  if (progFill) progFill.style.width = "10%";
+
+  try {
+    let audioBlob = null;
+
+    // 1. Try Cobalt API
+    try {
+      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          url: `https://www.youtube.com/watch?v=${track.id}`,
+          isAudioOnly: true,
+          aFormat: 'mp3',
+          filenamePattern: 'basic'
+        })
+      });
+
+      if (cobRes.ok) {
+        const cobData = await cobRes.json();
+        if (cobData.url) {
+          if (progFill) progFill.style.width = "40%";
+          const audioFetch = await fetch(cobData.url);
+          audioBlob = await audioFetch.blob();
+        }
+      }
+    } catch (e) {}
+
+    // 2. Try Piped audio streams fallback
+    if (!audioBlob) {
+      const pipedInstances = [
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.adminforge.de',
+        'https://pipedapi.leptons.xyz'
+      ];
+
+      for (const inst of pipedInstances) {
+        try {
+          const pipedRes = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
+          if (pipedRes.ok) {
+            const pipedData = await pipedRes.json();
+            const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+            if (audioStreams.length > 0) {
+              if (progFill) progFill.style.width = "50%";
+              const streamFetch = await fetch(audioStreams[0].url);
+              audioBlob = await streamFetch.blob();
+              if (audioBlob) break;
+            }
+          }
+        } catch (e) {}
       }
     }
 
     if (audioBlob) {
+      if (progFill) progFill.style.width = "90%";
       let coverBlob = null;
       try {
         const coverRes = await fetch(track.thumbnail);
@@ -1813,13 +1975,34 @@ async function downloadYtTrack(track, btnElement = null) {
 
       await musicStorage.saveSong(songObj);
       await loadLibrarySongs();
-      if (btnElement) btnElement.textContent = "✓ Selesai";
+
+      if (progFill) progFill.style.width = "100%";
+      if (btnElement) {
+        btnElement.textContent = "✓ Selesai";
+        btnElement.style.background = "rgba(46, 213, 115, 0.2)";
+        btnElement.style.color = "#2ed573";
+      }
+      if (statusBadge) {
+        statusBadge.textContent = "✓ Selesai";
+        statusBadge.style.background = "rgba(46, 213, 115, 0.2)";
+        statusBadge.style.color = "#2ed573";
+      }
     } else {
       if (btnElement) btnElement.textContent = "❌ Retry";
+      if (statusBadge) {
+        statusBadge.textContent = "❌ Gagal";
+        statusBadge.style.background = "rgba(255, 71, 87, 0.2)";
+        statusBadge.style.color = "#ff4757";
+      }
     }
   } catch (e) {
     console.warn("Download YT track error:", e);
     if (btnElement) btnElement.textContent = "❌ Error";
+    if (statusBadge) {
+      statusBadge.textContent = "❌ Error";
+      statusBadge.style.background = "rgba(255, 71, 87, 0.2)";
+      statusBadge.style.color = "#ff4757";
+    }
   }
 }
 
