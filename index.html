@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=60">
+  <link rel="stylesheet" href="styles.css?v=61">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -662,15 +662,15 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=60"></script>
+  <script type="module" src="app.js?v=61"></script>
 
   <!-- PWA Service Worker Registration & Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=60')
+        navigator.serviceWorker.register('./sw.js?v=61')
           .then((reg) => {
-            console.log('[SW] Registered v60:', reg);
+            console.log('[SW] Registered v61:', reg);
             reg.update();
           })
           .catch((err) => {

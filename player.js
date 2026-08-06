@@ -276,18 +276,24 @@ class AudioPlayerEngine {
       URL.revokeObjectURL(this.currentObjectUrl);
     }
 
-    if (currentSong.audioBlob) {
+    if (currentSong.audioBlob && (currentSong.audioBlob instanceof Blob || currentSong.audioBlob instanceof File)) {
       this.currentObjectUrl = URL.createObjectURL(currentSong.audioBlob);
       this.audio.src = this.currentObjectUrl;
+    } else if (typeof currentSong.audioBlob === 'string' && currentSong.audioBlob) {
+      this.audio.src = currentSong.audioBlob;
     } else if (currentSong.audioUrl || currentSong.url) {
       this.audio.src = currentSong.audioUrl || currentSong.url;
     }
 
     let coverUrl = null;
-    if (currentSong.coverBlob) {
+    if (currentSong.coverBlob && (currentSong.coverBlob instanceof Blob || currentSong.coverBlob instanceof File)) {
       try {
         coverUrl = URL.createObjectURL(currentSong.coverBlob);
       } catch(e) { coverUrl = null; }
+    } else if (typeof currentSong.coverBlob === 'string' && currentSong.coverBlob) {
+      coverUrl = currentSong.coverBlob;
+    } else if (currentSong.thumbnail || currentSong.coverUrl) {
+      coverUrl = currentSong.thumbnail || currentSong.coverUrl;
     }
 
     this.setupMediaSession();

@@ -2855,8 +2855,67 @@ async function playDiscoverSongOnline(track) {
 async function saveDiscoverSongOffline(track, btnElement) {
   if (btnElement) btnElement.textContent = "Saving...";
   try {
+    let coverBlob = null;
+    try {
+      const coverRes = await fetch(track.thumbnail);
+      if (coverRes.ok) coverBlob = await coverRes.blob();
+    } catch (e) {}
+
+    let audioBlob = null;
+    let directAudioUrl = track.previewUrl;
     const searchTarget = track.searchTerm || `${track.artist} - ${track.title}`;
-    await downloadYtTrack({ id: searchTarget, title: track.title, artist: track.artist, duration: track.duration, thumbnail: track.thumbnail }, btnElement);
+    
+    // Fetch direct audio stream via Cobalt API
+    try {
+      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, isAudioOnly: true, aFormat: 'mp3' })
+      });
+      if (cobRes.ok) {
+        const cobData = await cobRes.json();
+        if (cobData.url) {
+          const fetchRes = await fetch(cobData.url);
+          if (fetchRes.ok) {
+            const blob = await fetchRes.blob();
+            if (blob && blob.size > 50000) audioBlob = blob;
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Fallback: Fetch preview audio URL if blob download is blocked
+    if (!audioBlob && directAudioUrl) {
+      try {
+        const pFetch = await fetch(directAudioUrl);
+        if (pFetch.ok) {
+          const pBlob = await pFetch.blob();
+          if (pBlob && pBlob.size > 20000) audioBlob = pBlob;
+        }
+      } catch (e) {}
+    }
+
+    if (!audioBlob && !directAudioUrl) {
+      throw new Error("Tidak dapat mengambil stream audio. Coba lagi.");
+    }
+
+    const songObj = {
+      id: 'yt_' + (track.id || Date.now()) + '_' + Date.now(),
+      title: track.title,
+      artist: track.artist,
+      album: track.album || 'YouTube Music',
+      duration: track.duration,
+      explicit: false,
+      audioBlob: audioBlob,
+      audioUrl: audioBlob ? null : directAudioUrl,
+      coverBlob: coverBlob,
+      isFavorite: false,
+      dateAdded: Date.now()
+    };
+
+    await musicStorage.saveSong(songObj);
+    await loadLibrarySongs();
+
     if (btnElement) {
       btnElement.textContent = "Saved";
       btnElement.style.background = "rgba(55, 236, 186, 0.15)";
@@ -2865,5 +2924,6 @@ async function saveDiscoverSongOffline(track, btnElement) {
   } catch (err) {
     if (btnElement) btnElement.textContent = "Retry";
     console.warn("Save discover song error:", err);
+    alert("Gagal menyimpan lagu: " + err.message);
   }
 }
