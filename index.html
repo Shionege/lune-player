@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=59">
+  <link rel="stylesheet" href="styles.css?v=60">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -170,6 +170,8 @@
             <div id="yt-track-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;"></div>
           </div>
         </div>
+      </section>
+
       <!-- TAB: Discover & Search Online YouTube Music -->
       <section class="tab-view" id="tab-discover">
         <div class="page-title-row">
@@ -660,15 +662,15 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=59"></script>
+  <script type="module" src="app.js?v=60"></script>
 
   <!-- PWA Service Worker Registration & Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=59')
+        navigator.serviceWorker.register('./sw.js?v=60')
           .then((reg) => {
-            console.log('[SW] Registered v59:', reg);
+            console.log('[SW] Registered v60:', reg);
             reg.update();
           })
           .catch((err) => {
