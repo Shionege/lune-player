@@ -291,6 +291,8 @@ async function loadLibrarySongs() {
   }
 }
 
+let currentFilter = 'recents';
+
 function applyFilterAndSearch() {
   filteredSongs = allSongs.filter((song) => {
     const matchesSearch = searchQuery === '' || 
@@ -303,6 +305,18 @@ function applyFilterAndSearch() {
     if (currentFilter === 'favorites') return song.isFavorite;
     return true;
   });
+
+  // Apply Filter & Sort logic
+  if (currentFilter === 'alphabet') {
+    filteredSongs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  } else if (currentFilter === 'artists') {
+    filteredSongs.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
+  } else if (currentFilter === 'albums') {
+    filteredSongs.sort((a, b) => (a.album || '').localeCompare(b.album || ''));
+  } else {
+    // recents (newest added first)
+    filteredSongs.sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0));
+  }
 
   renderLibrarySongs();
 }

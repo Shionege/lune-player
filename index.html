@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=65">
+  <link rel="stylesheet" href="styles.css?v=66">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -260,21 +260,12 @@
           <input type="text" id="search-library-input" class="search-input" placeholder="Search title, artist, album...">
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;">
-          <div class="filter-chips" style="margin-bottom: 0; overflow-x: auto; flex: 1;">
-            <div class="chip active" data-filter="all">All Songs</div>
-            <div class="chip" data-filter="favorites">Favorites</div>
-            <div class="chip" data-filter="artists">Artists</div>
-            <div class="chip" data-filter="albums">Albums</div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-            <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Sort:</span>
-            <select id="library-sort-select" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-primary); font-size: 11.5px; font-weight: 600; border-radius: 8px; padding: 4px 8px; outline: none; cursor: pointer;">
-              <option value="recents" style="background: #120e1e; color: #fff;">Recents</option>
-              <option value="alphabet" style="background: #120e1e; color: #fff;">Title (A-Z)</option>
-              <option value="artist" style="background: #120e1e; color: #fff;">Artist (A-Z)</option>
-            </select>
-          </div>
+        <div class="filter-chips" style="margin-bottom: 12px; overflow-x: auto; display: flex; gap: 8px;">
+          <div class="chip active" data-filter="recents">Recents</div>
+          <div class="chip" data-filter="alphabet">Title (A-Z)</div>
+          <div class="chip" data-filter="favorites">Favorites</div>
+          <div class="chip" data-filter="artists">Artists</div>
+          <div class="chip" data-filter="albums">Albums</div>
         </div>
 
         <div class="song-list" id="library-song-list">
@@ -283,40 +274,34 @@
 
         <div class="empty-state" id="library-empty" style="display: none;">
           <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
           </div>
-          <div class="empty-text">No music in your offline library yet.</div>
-          <button class="btn-primary" id="btn-empty-import">Import / Generate Demo</button>
+          <div class="empty-title">Music Library Empty</div>
+          <div class="empty-text">Import MP3s via Wi-Fi or search & stream tracks online in the Discover tab.</div>
         </div>
       </section>
 
-      <!-- TAB 3: Center Hero Orb View -->
-      <section class="tab-view" id="tab-nowplaying">
-        <div class="section-header">
-          <h1 class="section-title">Now Playing</h1>
-        </div>
-        <div class="empty-state">
-          <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-          </div>
-          <div class="empty-text">Tap the Center Orb below to open full player sheet!</div>
-          <button class="btn-primary" id="btn-open-now-playing-sheet">Open Player Sheet</button>
-        </div>
-      </section>
-
-      <!-- TAB 4: Playlists & Favorites -->
+      <!-- TAB 3: Playlists -->
       <section class="tab-view" id="tab-playlists">
-        <!-- Main Playlist List View -->
-        <div id="playlists-main-view">
-          <div class="page-title-row">
-            <h1 class="page-title">Playlists</h1>
-            <button class="icon-btn" id="btn-create-playlist" title="New Playlist">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
+        <div class="page-title-row">
+          <h1 class="page-title">Playlists</h1>
+          <button class="header-action-pill primary" id="btn-open-create-playlist" title="Create Playlist">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Playlist
+          </button>
+        </div>
+
+        <div id="playlists-overview">
+          <div class="playlist-grid" id="playlists-grid">
+            <!-- Rendered playlists -->
           </div>
 
-          <div class="song-list" id="playlists-list">
-            <!-- Populated dynamically -->
+          <div class="empty-state" id="playlists-empty" style="display: none;">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+            <div class="empty-title">No Playlists Yet</div>
+            <div class="empty-text">Create your first playlist to organize your favorite tracks.</div>
           </div>
         </div>
 
@@ -356,49 +341,7 @@
           <h1 class="page-title">Settings</h1>
         </div>
 
-        <!-- Google Drive Sync Card -->
-        <div class="p2p-card" style="text-align: left;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <h3 style="display: flex; align-items: center; gap: 8px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
-              Google Drive Sync
-            </h3>
-            <span class="badge" id="gdrive-status-badge" style="background: rgba(255,255,255,0.08); color: var(--text-muted); font-size: 11px; padding: 3px 8px; border-radius: 10px;">Not Connected</span>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary);" id="gdrive-user-info">
-            Hubungkan akun Google Drive untuk melakukan Backup & Restore seluruh koleksi lagu secara otomatis.
-          </p>
-
-          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
-            <button class="btn-primary" id="btn-gdrive-connect" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-              Hubungkan Google Drive
-            </button>
-            <button class="btn-secondary" id="btn-gdrive-token-input" style="font-size: 12px; opacity: 0.85;">
-              Masukkan Token Manual
-            </button>
-
-            <div id="gdrive-actions-group" style="display: none; flex-direction: column; gap: 8px;">
-              <div style="display: flex; gap: 8px;">
-                <button class="btn-secondary" id="btn-gdrive-backup" style="flex: 1; font-size: 13px;">Backup Library</button>
-                <button class="btn-secondary" id="btn-gdrive-restore" style="flex: 1; font-size: 13px;">Restore Library</button>
-              </div>
-              <button class="btn-secondary" id="btn-gdrive-disconnect" style="font-size: 12px; color: #ef4444;">Putuskan Koneksi</button>
-            </div>
-
-            <!-- Progress Bar for Drive Sync -->
-            <div id="gdrive-progress-container" style="display: none; margin-top: 10px;">
-              <div class="progress-bar-container" style="height: 6px; margin-bottom: 6px;">
-                <div class="progress-bar-fill" id="gdrive-progress-fill" style="width: 0%;"></div>
-              </div>
-              <div id="gdrive-progress-text" style="font-size: 12px; color: var(--text-muted); text-align: center;">
-                Proses Sync...
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Offline File Backup Card -->
+        <!-- Offline Local Backup Card -->
         <div class="p2p-card" style="text-align: left;">
           <h3 style="display: flex; align-items: center; gap: 8px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
@@ -415,16 +358,9 @@
         </div>
 
         <div class="p2p-card" style="text-align: left;">
-          <h3>Offline Storage Status</h3>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="storage-status-text">
-            IndexedDB status: Active (100% Offline)
-          </p>
-        </div>
-
-        <div class="p2p-card" style="text-align: left;">
           <h3>App Information</h3>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;">
-            Lune Player PWA v1.0.0<br>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="app-info-version">
+            Lune Player PWA v66.0.0<br>
             Liquid Glass iOS 27 Design System.
           </p>
         </div>
@@ -687,15 +623,15 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=65"></script>
+  <script type="module" src="app.js?v=66"></script>
 
   <!-- PWA Service Worker Registration & Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=65')
+        navigator.serviceWorker.register('./sw.js?v=66')
           .then((reg) => {
-            console.log('[SW] Registered v65:', reg);
+            console.log('[SW] Registered v66:', reg);
             reg.update();
           })
           .catch((err) => {
