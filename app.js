@@ -2688,26 +2688,42 @@ async function searchOnlineYouTube(query) {
 
   let tracks = [];
 
-  // Provider 1: iTunes Store Music API (100% CORS Enabled & Instant High-Res Artwork)
-  try {
-    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
-    if (itunesRes.ok) {
-      const itunesData = await itunesRes.json();
-      if (itunesData.results && itunesData.results.length > 0) {
-        tracks = itunesData.results.map(item => ({
-          id: `itunes_${item.trackId}`,
-          searchTerm: `${item.artistName} - ${item.trackName}`,
-          title: item.trackName,
-          artist: item.artistName || 'Various Artists',
-          album: item.collectionName || 'Single',
-          duration: Math.round((item.trackTimeMillis || 180000) / 1000),
-          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60,
-          previewUrl: item.previewUrl || null
-        }));
+  // Provider 1: JioSaavn Music API (100% CORS-Free, Full 320kbps MP3 Streams & High-Res Artwork)
+  const saavnEndpoints = [
+    `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=25`,
+    `https://saavn.me/search/songs?query=${encodeURIComponent(query)}&limit=25`
+  ];
+
+  for (const sEndpoint of saavnEndpoints) {
+    try {
+      const saavnRes = await fetch(sEndpoint, { signal: AbortSignal.timeout(4000) });
+      if (saavnRes.ok) {
+        const saavnData = await saavnRes.json();
+        const results = saavnData.data ? (saavnData.data.results || saavnData.data) : (saavnData.results || []);
+        if (Array.isArray(results) && results.length > 0) {
+          tracks = results.map(item => {
+            const dlUrls = item.downloadUrl || item.media_url || [];
+            const directUrl = Array.isArray(dlUrls) ? (dlUrls[dlUrls.length - 1]?.link || dlUrls[0]?.link || dlUrls) : dlUrls;
+            const imgs = item.image || item.artwork || [];
+            const imgUrl = Array.isArray(imgs) ? (imgs[imgs.length - 1]?.link || imgs[0]?.link || imgs) : imgs;
+
+            return {
+              id: `saavn_${item.id || Date.now()}`,
+              searchTerm: `${item.primaryArtists || item.singers || item.artist || ''} - ${item.name || item.song}`,
+              title: item.name || item.song || 'Unknown Title',
+              artist: item.primaryArtists || item.singers || item.artist || 'Unknown Artist',
+              album: item.album?.name || item.album || 'Single',
+              duration: parseInt(item.duration, 10) || 210,
+              thumbnail: typeof imgUrl === 'string' ? imgUrl : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+              directMp3Url: typeof directUrl === 'string' ? directUrl : null
+            };
+          }).filter(t => t.directMp3Url);
+          if (tracks.length > 0) break;
+        }
       }
+    } catch (e) {
+      console.warn("Saavn Search API endpoint failed:", sEndpoint, e);
     }
-  } catch (e) {
-    console.warn("iTunes Search API fallback:", e);
   }
 
   // Provider 2: Invidious / Piped CORS Pool (If iTunes yielded no tracks)
@@ -2910,8 +2926,11 @@ async function fetchFullAudioStream(artist, title, inputVideoId = null) {
 
 async function playDiscoverSongOnline(track) {
   try {
-    const { streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
-    const playUrl = streamUrl || track.previewUrl;
+    let playUrl = track.directMp3Url;
+    if (!playUrl) {
+      const res = await fetchFullAudioStream(track.artist, track.title, track.id);
+      playUrl = res.streamUrl;
+    }
 
     if (!playUrl) {
       alert("Stream audio online tidak tersedia untuk lagu ini saat ini.");
@@ -2949,18 +2968,29 @@ async function saveDiscoverSongOffline(track, btnElement) {
       if (coverRes.ok) coverBlob = await coverRes.blob();
     } catch (e) {}
 
-    const { vId, streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
+    let audioBlob = null;
 
-    const fetchRes = await fetch(streamUrl);
-    if (!fetchRes.ok) throw new Error("Gagal mengunduh data audio.");
-    const audioBlob = await fetchRes.blob();
+    if (track.directMp3Url) {
+      try {
+        const fetchRes = await fetch(track.directMp3Url);
+        if (fetchRes.ok) audioBlob = await fetchRes.blob();
+      } catch (e) {}
+    }
 
     if (!audioBlob || audioBlob.size < 100000) {
-      throw new Error("Ukuran file audio terlalu kecil atau terpotong.");
+      const { streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
+      if (streamUrl) {
+        const fetchRes = await fetch(streamUrl);
+        if (fetchRes.ok) audioBlob = await fetchRes.blob();
+      }
+    }
+
+    if (!audioBlob || audioBlob.size < 100000) {
+      throw new Error("Gagal mengunduh file audio utuh. Silakan coba lagi.");
     }
 
     const songObj = {
-      id: 'yt_' + (vId || Date.now()) + '_' + Date.now(),
+      id: 'yt_' + (track.id || Date.now()) + '_' + Date.now(),
       title: track.title,
       artist: track.artist,
       album: track.album || 'YouTube Music',
