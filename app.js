@@ -2702,74 +2702,51 @@ async function searchOnlineYouTube(query) {
 
   let tracks = [];
 
-  // Provider 1: JioSaavn Music API (100% CORS-Free, Full 320kbps MP3 Streams & High-Res Artwork)
-  const saavnEndpoints = [
-    `https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=25`,
-    `https://saavn.me/search/songs?query=${encodeURIComponent(query)}&limit=25`
-  ];
+  // Provider 1: iTunes Store Music API (100% Open CORS & Instant High-Res 600x600 Artwork)
+  try {
+    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
+    if (itunesRes.ok) {
+      const itunesData = await itunesRes.json();
+      if (itunesData.results && itunesData.results.length > 0) {
+        tracks = itunesData.results.map(item => ({
+          id: `itunes_${item.trackId}`,
+          searchTerm: `${item.artistName} - ${item.trackName}`,
+          title: item.trackName,
+          artist: item.artistName || 'Various Artists',
+          album: item.collectionName || 'Single',
+          duration: Math.round((item.trackTimeMillis || 180000) / 1000),
+          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn("iTunes Search API error:", e);
+  }
 
-  for (const sEndpoint of saavnEndpoints) {
+  // Provider 2: AllOrigins CORS Proxy YouTube Search (If iTunes returned no tracks)
+  if (tracks.length === 0) {
     try {
-      const saavnRes = await fetch(sEndpoint, { signal: AbortSignal.timeout(4000) });
-      if (saavnRes.ok) {
-        const saavnData = await saavnRes.json();
-        const results = saavnData.data ? (saavnData.data.results || saavnData.data) : (saavnData.results || []);
-        if (Array.isArray(results) && results.length > 0) {
-          tracks = results.map(item => {
-            const dlUrls = item.downloadUrl || item.media_url || [];
-            const directUrl = Array.isArray(dlUrls) ? (dlUrls[dlUrls.length - 1]?.link || dlUrls[0]?.link || dlUrls) : dlUrls;
-            const imgs = item.image || item.artwork || [];
-            const imgUrl = Array.isArray(imgs) ? (imgs[imgs.length - 1]?.link || imgs[0]?.link || imgs) : imgs;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/results?search_query=' + query)}`;
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const html = await res.text();
+        const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+        const videoIds = [...new Set(matches.map(m => m[1]))].slice(0, 20);
 
-            return {
-              id: `saavn_${item.id || Date.now()}`,
-              searchTerm: `${item.primaryArtists || item.singers || item.artist || ''} - ${item.name || item.song}`,
-              title: item.name || item.song || 'Unknown Title',
-              artist: item.primaryArtists || item.singers || item.artist || 'Unknown Artist',
-              album: item.album?.name || item.album || 'Single',
-              duration: parseInt(item.duration, 10) || 210,
-              thumbnail: typeof imgUrl === 'string' ? imgUrl : `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-              directMp3Url: typeof directUrl === 'string' ? directUrl : null
-            };
-          }).filter(t => t.directMp3Url);
-          if (tracks.length > 0) break;
+        if (videoIds.length > 0) {
+          tracks = videoIds.map(vId => ({
+            id: vId,
+            searchTerm: query,
+            title: `${query} (${vId})`,
+            artist: 'YouTube Music',
+            album: 'YouTube Discover',
+            duration: 210,
+            thumbnail: `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
+          }));
         }
       }
     } catch (e) {
-      console.warn("Saavn Search API endpoint failed:", sEndpoint, e);
-    }
-  }
-
-  // Provider 2: Invidious / Piped CORS Pool (If iTunes yielded no tracks)
-  if (tracks.length === 0) {
-    const searchEndpoints = [
-      'https://inv.tux.pizza/api/v1/search',
-      'https://invidious.nerdvpn.de/api/v1/search',
-      'https://api.piped.video/search'
-    ];
-
-    for (const endpoint of searchEndpoints) {
-      try {
-        const res = await fetch(`${endpoint}?q=${encodeURIComponent(query)}&type=video`, { signal: AbortSignal.timeout(4000) });
-        if (res.ok) {
-          const data = await res.json();
-          const items = Array.isArray(data) ? data : (data.items || []);
-          if (items.length > 0) {
-            tracks = items.slice(0, 25).map(v => ({
-              id: v.videoId || (v.url ? v.url.split('v=')[1] : v.title),
-              searchTerm: `${v.author || v.uploaderName || ''} - ${v.title}`,
-              title: v.title,
-              artist: v.author || v.uploaderName || 'YouTube Music',
-              album: 'YouTube Discover',
-              duration: v.lengthSeconds || v.duration || 180,
-              thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : (v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`)
-            }));
-            break;
-          }
-        }
-      } catch (err) {
-        console.warn(`Search endpoint ${endpoint} failed:`, err);
-      }
+      console.warn("AllOrigins Search fallback error:", e);
     }
   }
 
@@ -2795,7 +2772,6 @@ function renderDiscoverResultsUI(tracks) {
   }
 
   container.innerHTML = tracks.map((track, idx) => {
-    // Check if song is already saved in offline library
     const isSaved = allSongs.some(s => s.id && (s.id.includes(track.id) || String(s.title).toLowerCase() === String(track.title).toLowerCase()));
     
     return `
@@ -2823,7 +2799,6 @@ function renderDiscoverResultsUI(tracks) {
     `;
   }).join('');
 
-  // Attach Play Online Event Handlers
   container.querySelectorAll('[data-discover-play-idx], [data-discover-play-btn]').forEach(el => {
     el.addEventListener('click', async (e) => {
       const idx = parseInt(el.dataset.discoverPlayIdx || el.dataset.discoverPlayBtn, 10);
@@ -2832,7 +2807,6 @@ function renderDiscoverResultsUI(tracks) {
     });
   });
 
-  // Attach Save Offline Event Handlers
   container.querySelectorAll('[data-discover-save-idx]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -2845,10 +2819,22 @@ function renderDiscoverResultsUI(tracks) {
 
 async function resolveYouTubeVideoId(artist, title) {
   const query = `${artist} ${title}`.trim();
+  
+  // 1. Try AllOrigins CORS proxy YouTube search scraper
+  try {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/results?search_query=' + query)}`;
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const html = await res.text();
+      const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+      if (match && match[1]) return match[1];
+    }
+  } catch (e) {}
+
+  // 2. Try Invidious / Piped APIs via CorsProxy
   const searchEndpoints = [
-    `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
-    `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
-    `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`
+    `https://corsproxy.io/?${encodeURIComponent('https://inv.tux.pizza/api/v1/search?q=' + query + '&type=video')}`,
+    `https://corsproxy.io/?${encodeURIComponent('https://pipedapi.kavin.rocks/search?q=' + query + '&filter=music_songs')}`
   ];
 
   for (const endpoint of searchEndpoints) {
@@ -2860,24 +2846,11 @@ async function resolveYouTubeVideoId(artist, title) {
         if (items.length > 0) {
           const first = items[0];
           const vId = first.videoId || (first.url ? first.url.split('v=')[1] : null);
-          if (vId && vId.length === 11) {
-            return vId;
-          }
+          if (vId && vId.length === 11) return vId;
         }
       }
     } catch (e) {}
   }
-
-  // Fallback: Scrape YouTube HTML via CORS proxy
-  try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/results?search_query=' + query)}`;
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const html = await res.text();
-      const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-      if (match && match[1]) return match[1];
-    }
-  } catch (e) {}
 
   return null;
 }
@@ -2889,16 +2862,16 @@ async function fetchFullAudioStream(artist, title, inputVideoId = null) {
   }
 
   if (vId && vId.length === 11) {
-    const streamEndpoints = [
-      `https://inv.tux.pizza/api/v1/videos/${vId}`,
-      `https://invidious.nerdvpn.de/api/v1/videos/${vId}`,
-      `https://vid.puffyan.us/api/v1/videos/${vId}`,
-      `https://pipedapi.kavin.rocks/streams/${vId}`
+    const streamCandidates = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://inv.tux.pizza/api/v1/videos/' + vId)}`,
+      `https://corsproxy.io/?${encodeURIComponent('https://inv.tux.pizza/api/v1/videos/' + vId)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://invidious.nerdvpn.de/api/v1/videos/' + vId)}`,
+      `https://corsproxy.io/?${encodeURIComponent('https://pipedapi.kavin.rocks/streams/' + vId)}`
     ];
 
-    for (const endpoint of streamEndpoints) {
+    for (const target of streamCandidates) {
       try {
-        const res = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
+        const res = await fetch(target, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.adaptiveFormats) {
@@ -2915,22 +2888,19 @@ async function fetchFullAudioStream(artist, title, inputVideoId = null) {
             }
           }
         }
-      } catch (e) {
-        console.warn("Stream fetch endpoint failed:", endpoint, e);
-      }
+      } catch (e) {}
     }
 
     try {
-      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+      const cobUrl = `https://corsproxy.io/?${encodeURIComponent('https://api.cobalt.tools/api/json')}`;
+      const cobRes = await fetch(cobUrl, {
         method: 'POST',
         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${vId}`, isAudioOnly: true, aFormat: 'mp3' })
       });
       if (cobRes.ok) {
         const cobData = await cobRes.json();
-        if (cobData.url) {
-          return { vId, streamUrl: cobData.url };
-        }
+        if (cobData.url) return { vId, streamUrl: cobData.url };
       }
     } catch (e) {}
   }
