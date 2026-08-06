@@ -995,17 +995,18 @@ body {
 
 /* Now Playing Slide-Up Sheet Overlay */
 .now-playing-sheet {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   background: var(--bg-pitch-black);
   backdrop-filter: blur(50px) saturate(210%);
   -webkit-backdrop-filter: blur(50px) saturate(210%);
-  z-index: 2000;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1013,8 +1014,9 @@ body {
   padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   padding-left: 24px;
   padding-right: 24px;
+  border-radius: 0 !important;
   transform: translateY(100%);
-  transition: transform 0.52s cubic-bezier(0.25, 1, 0.35, 1);
+  transition: transform 0.42s cubic-bezier(0.25, 1, 0.35, 1);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -1024,9 +1026,12 @@ body {
 }
 
 .now-playing-sheet.open ~ .floating-mini-player,
-#now-playing-sheet.open + .floating-mini-player {
+#now-playing-sheet.open + .floating-mini-player,
+.now-playing-sheet.open ~ .floating-nav-dock,
+#now-playing-sheet.open ~ .floating-nav-dock {
   display: none !important;
   opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .sheet-header {

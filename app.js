@@ -482,6 +482,16 @@ function initLibraryEvents() {
     });
   });
 
+  const btnTriggerSelectMode = document.getElementById('btn-trigger-select-mode');
+  if (btnTriggerSelectMode) {
+    btnTriggerSelectMode.addEventListener('click', () => {
+      isMultiSelectMode = !isMultiSelectMode;
+      if (!isMultiSelectMode) selectedMultiSongIds.clear();
+      updateMultiSelectUI();
+      renderLibrarySongs();
+    });
+  }
+
   const btnCancelMulti = document.getElementById('btn-cancel-multi-select');
   const btnSelectAll = document.getElementById('btn-select-all-library');
   const btnDeleteSelected = document.getElementById('btn-delete-selected-library');
@@ -2827,6 +2837,18 @@ async function resolveYouTubeVideoId(artist, title) {
       }
     } catch (e) {}
   }
+
+  // Fallback: Scrape YouTube HTML via CORS proxy
+  try {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/results?search_query=' + query)}`;
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const html = await res.text();
+      const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+      if (match && match[1]) return match[1];
+    }
+  } catch (e) {}
+
   return null;
 }
 
@@ -2836,71 +2858,73 @@ async function fetchFullAudioStream(artist, title, inputVideoId = null) {
     vId = await resolveYouTubeVideoId(artist, title);
   }
 
-  if (!vId) {
-    throw new Error("Video ID tidak ditemukan.");
-  }
+  if (vId && vId.length === 11) {
+    const streamEndpoints = [
+      `https://inv.tux.pizza/api/v1/videos/${vId}`,
+      `https://invidious.nerdvpn.de/api/v1/videos/${vId}`,
+      `https://vid.puffyan.us/api/v1/videos/${vId}`,
+      `https://pipedapi.kavin.rocks/streams/${vId}`
+    ];
 
-  const streamEndpoints = [
-    `https://inv.tux.pizza/api/v1/videos/${vId}`,
-    `https://invidious.nerdvpn.de/api/v1/videos/${vId}`,
-    `https://vid.puffyan.us/api/v1/videos/${vId}`,
-    `https://pipedapi.kavin.rocks/streams/${vId}`
-  ];
+    for (const endpoint of streamEndpoints) {
+      try {
+        const res = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.adaptiveFormats) {
+            const audioFormats = data.adaptiveFormats.filter(f => f.type && f.type.includes('audio'));
+            audioFormats.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
+            if (audioFormats.length > 0 && audioFormats[0].url) {
+              return { vId, streamUrl: audioFormats[0].url };
+            }
+          }
+          if (data.audioStreams) {
+            const audioStreams = data.audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+            if (audioStreams.length > 0 && audioStreams[0].url) {
+              return { vId, streamUrl: audioStreams[0].url };
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Stream fetch endpoint failed:", endpoint, e);
+      }
+    }
 
-  for (const endpoint of streamEndpoints) {
     try {
-      const res = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const data = await res.json();
-        // Invidious format
-        if (data.adaptiveFormats) {
-          const audioFormats = data.adaptiveFormats.filter(f => f.type && f.type.includes('audio'));
-          audioFormats.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
-          if (audioFormats.length > 0 && audioFormats[0].url) {
-            return { vId, streamUrl: audioFormats[0].url };
-          }
-        }
-        // Piped format
-        if (data.audioStreams) {
-          const audioStreams = data.audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-          if (audioStreams.length > 0 && audioStreams[0].url) {
-            return { vId, streamUrl: audioStreams[0].url };
-          }
+      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${vId}`, isAudioOnly: true, aFormat: 'mp3' })
+      });
+      if (cobRes.ok) {
+        const cobData = await cobRes.json();
+        if (cobData.url) {
+          return { vId, streamUrl: cobData.url };
         }
       }
-    } catch (e) {
-      console.warn("Stream fetch endpoint failed:", endpoint, e);
-    }
+    } catch (e) {}
   }
 
-  // Fallback Cobalt API if invidious endpoints are unreachable
-  try {
-    const cobRes = await fetch('https://api.cobalt.tools/api/json', {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${vId}`, isAudioOnly: true, aFormat: 'mp3' })
-    });
-    if (cobRes.ok) {
-      const cobData = await cobRes.json();
-      if (cobData.url) {
-        return { vId, streamUrl: cobData.url };
-      }
-    }
-  } catch (e) {}
-
-  throw new Error("Gagal mengambil stream audio utuh.");
+  return { vId: vId || 'fallback_id', streamUrl: null };
 }
 
 async function playDiscoverSongOnline(track) {
   try {
     const { streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
+    const playUrl = streamUrl || track.previewUrl;
+
+    if (!playUrl) {
+      alert("Stream audio online tidak tersedia untuk lagu ini saat ini.");
+      return;
+    }
+
     const onlineSongObj = {
       id: 'online_' + (track.id || Date.now()),
       title: track.title,
       artist: track.artist,
       album: track.album || 'YouTube Discover',
       duration: track.duration,
-      audioBlob: streamUrl,
+      audioBlob: playUrl,
       coverBlob: track.thumbnail,
       isFavorite: false,
       isOnline: true

@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=63">
+  <link rel="stylesheet" href="styles.css?v=64">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -219,10 +219,16 @@
             <h1 class="page-title">Music Library</h1>
             <span class="page-subtitle" id="library-count">0 Songs</span>
           </div>
-          <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Import
-          </button>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button class="header-action-pill" id="btn-trigger-select-mode" title="Select Songs" style="background: rgba(255,255,255,0.08); color: var(--text-primary); font-size: 11.5px; padding: 6px 12px; display: flex; align-items: center; gap: 5px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Select
+            </button>
+            <button class="header-action-pill primary" id="btn-open-file-input" title="Import Audio File" style="font-size: 11.5px; padding: 6px 12px; display: flex; align-items: center; gap: 5px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Import
+            </button>
+          </div>
           <input type="file" id="file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac,.ogg,.opus,.webm,.3gp,.3g2,.amr,.wma" multiple style="display: none;">
         </div>
 
@@ -662,15 +668,15 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=63"></script>
+  <script type="module" src="app.js?v=64"></script>
 
   <!-- PWA Service Worker Registration & Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=63')
+        navigator.serviceWorker.register('./sw.js?v=64')
           .then((reg) => {
-            console.log('[SW] Registered v63:', reg);
+            console.log('[SW] Registered v64:', reg);
             reg.update();
           })
           .catch((err) => {
