@@ -1601,11 +1601,11 @@ function initBackupEvents() {
         a.download = `LunePlayer_Backup_${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        btnExport.textContent = '✓ Exported!';
-        setTimeout(() => { btnExport.textContent = '📤 Export Backup (.json)'; }, 2000);
+        btnExport.textContent = 'Exported!';
+        setTimeout(() => { btnExport.textContent = 'Export Backup (.json)'; }, 2000);
       } catch (err) {
         alert("Export failed: " + err.message);
-        btnExport.textContent = '📤 Export Backup (.json)';
+        btnExport.textContent = 'Export Backup (.json)';
       }
     });
   }
@@ -1616,17 +1616,17 @@ function initBackupEvents() {
       const file = e.target.files[0];
       if (!file) return;
       try {
-        btnImport.textContent = '⌛ Importing...';
+        btnImport.textContent = 'Importing...';
         const text = await file.text();
         await musicStorage.importData(text);
         await loadLibrarySongs();
         await loadPlaylists();
-        btnImport.textContent = '✓ Imported!';
+        btnImport.textContent = 'Imported!';
         alert("Library & Playlists restored successfully!");
-        setTimeout(() => { btnImport.textContent = '📥 Import Backup (.json)'; }, 2000);
+        setTimeout(() => { btnImport.textContent = 'Import Backup (.json)'; }, 2000);
       } catch (err) {
         alert("Import failed: " + err.message);
-        btnImport.textContent = '📥 Import Backup (.json)';
+        btnImport.textContent = 'Import Backup (.json)';
       }
     });
   }
@@ -1754,6 +1754,68 @@ function renderYtTracklistUI(tracks) {
 }
 
 async function fetchYtTracksFromUrl(rawUrl, onProgress = () => {}) {
+  const cleanInput = rawUrl.trim();
+  if (!cleanInput) {
+    throw new Error("Masukkan judul lagu atau link YouTube.");
+  }
+
+  const isYtUrl = cleanInput.includes('youtube.com') || cleanInput.includes('youtu.be');
+
+  // MODE A: Search by Song Title via Free 320kbps MP3 API (JioSaavn CORS-safe API - 100% HP Standalone)
+  if (!isYtUrl) {
+    onProgress("🔍 Mencari lagu di database MP3 320kbps...", 30);
+    const saavnApis = [
+      `https://saavn.dev/api/search/songs?query=${encodeURIComponent(cleanInput)}`,
+      `https://jiosaavn-api-v3.vercel.app/search?query=${encodeURIComponent(cleanInput)}`
+    ];
+
+    for (const api of saavnApis) {
+      try {
+        const res = await fetch(api, { signal: AbortSignal.timeout(6000) });
+        if (res.ok) {
+          const json = await res.json();
+          const results = json.data?.results || json.results || json.data || [];
+          if (Array.isArray(results) && results.length > 0) {
+            onProgress(`🎵 Ditemukan ${results.length} lagu!`, 80);
+            return results.map(song => {
+              // Extract highest quality MP3 download URL
+              let dlUrl = null;
+              if (Array.isArray(song.downloadUrl) && song.downloadUrl.length > 0) {
+                const best = song.downloadUrl.find(d => d.quality === '320kbps') ||
+                             song.downloadUrl.find(d => d.quality === '160kbps') ||
+                             song.downloadUrl[song.downloadUrl.length - 1];
+                dlUrl = best?.url || best?.link;
+              } else if (typeof song.downloadUrl === 'string') {
+                dlUrl = song.downloadUrl;
+              } else if (song.url) {
+                dlUrl = song.url;
+              }
+
+              // Extract thumbnail image
+              let thumb = `https://i.ytimg.com/vi/default/hqdefault.jpg`;
+              if (Array.isArray(song.image) && song.image.length > 0) {
+                const bestImg = song.image.find(i => i.quality === '500x500') || song.image[song.image.length - 1];
+                thumb = bestImg?.url || bestImg?.link || thumb;
+              } else if (typeof song.image === 'string') {
+                thumb = song.image;
+              }
+
+              return {
+                id: song.id || 'saavn_' + Math.random().toString(36).substr(2, 9),
+                title: (song.name || song.title || 'Unknown Track').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                artist: (song.primaryArtists || song.artist || song.singers || 'Unknown Artist').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                duration: parseInt(song.duration, 10) || 210,
+                thumbnail: thumb,
+                directMp3Url: dlUrl
+              };
+            });
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  // MODE B: YouTube URL Parse
   let playlistId = null;
   let videoId = null;
 
@@ -1766,7 +1828,7 @@ async function fetchYtTracksFromUrl(rawUrl, onProgress = () => {}) {
   }
 
   if (!playlistId && !videoId) {
-    throw new Error("Format URL tidak valid. Pastikan link berisi ID playlist / video YouTube.");
+    throw new Error("Lagu tidak ditemukan. Coba ketik judul lagu (contoh: Coldplay Yellow) atau paste link YouTube.");
   }
 
   let videoIds = [];
@@ -1974,23 +2036,163 @@ async function downloadYtTrack(track, idx = null) {
     let audioBlob = null;
     let directAudioUrl = null;
 
-    // Method 0: Native Server / Direct API Stream (Downloads FULL 100% Offline MP3 Blob into IndexedDB)
-    try {
-      updateProgress("20%", 20, "Fetching MP3 Audio Blob...");
-      const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(30000) });
-      if (nativeRes.ok) {
-        const candidateBlob = await nativeRes.blob();
-        if (candidateBlob && candidateBlob.size > 200000) {
-          audioBlob = candidateBlob;
-        }
-      }
-    } catch (e) {}
+    // Helper: Safe cross-origin fetch for Blobs without triggering uncaught browser CORS policy errors
+    const fetchBlobCors = async (url, timeoutMs = 20000) => {
+      if (!url) return null;
+      const proxyCandidates = [
+        url,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        `https://thingproxy.freeboard.io/fetch/${url}`
+      ];
 
-    // Method 1: Try Loader.to / Savenow Audio Converter Engine
+      for (const target of proxyCandidates) {
+        try {
+          const res = await fetch(target, { signal: AbortSignal.timeout(timeoutMs) });
+          if (res.ok) {
+            const blob = await res.blob();
+            if (blob && blob.size > 50000) return blob;
+          }
+        } catch (e) {}
+      }
+      return null;
+    };
+
+    // Engine -1: Direct MP3 Stream URL (From Free MP3 320kbps Search Engine - 100% CORS-Safe)
+    if (track.directMp3Url) {
+      updateProgress("30%", 30, "Downloading 320kbps MP3...");
+      const candidateBlob = await fetchBlobCors(track.directMp3Url, 30000);
+      if (candidateBlob && candidateBlob.size > 50000) {
+        audioBlob = candidateBlob;
+      } else {
+        directAudioUrl = track.directMp3Url;
+      }
+    }
+
+    // Engine 0: Native Local Server Stream Endpoint (If running locally or via Node server.js)
+    if (!audioBlob && !directAudioUrl && track.id && !track.id.startsWith('saavn_')) {
+      try {
+        updateProgress("15%", 15, "Connecting Stream...");
+        const nativeRes = await fetch(`/api/yt-stream?id=${track.id}`, { signal: AbortSignal.timeout(15000) });
+        if (nativeRes.ok) {
+          const candidateBlob = await nativeRes.blob();
+          if (candidateBlob && candidateBlob.size > 200000) {
+            audioBlob = candidateBlob;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Engine 1: Cobalt.tools High-Quality Audio Conversion API
     if (!audioBlob) {
+      updateProgress("30%", 30, "Connecting Cobalt...");
+      const cobaltEndpoints = [
+        'https://api.cobalt.tools',
+        'https://co.wuk.sh',
+        'https://cobalt-api.kwiatek.xyz'
+      ];
+      for (const endpoint of cobaltEndpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              url: `https://www.youtube.com/watch?v=${track.id}`,
+              downloadMode: 'audio',
+              audioFormat: 'mp3'
+            }),
+            signal: AbortSignal.timeout(6000)
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const streamUrl = data.url || (data.picker && data.picker[0] && data.picker[0].url);
+            if (streamUrl) {
+              directAudioUrl = streamUrl;
+              updateProgress("60%", 60, "Fetching Audio Blob...");
+              const candidate = await fetchBlobCors(streamUrl, 25000);
+              if (candidate) {
+                audioBlob = candidate;
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+        if (audioBlob || directAudioUrl) break;
+      }
+    }
+
+    // Engine 2: Invidious API Adaptive Audio Streams
+    if (!audioBlob && !directAudioUrl) {
+      updateProgress("45%", 45, "Fetching Invidious Stream...");
+      const invidiousInstances = [
+        'https://inv.tux.pizza',
+        'https://invidious.nerdvpn.de',
+        'https://vid.puffyan.us',
+        'https://invidious.drgns.space'
+      ];
+      for (const inst of invidiousInstances) {
+        try {
+          const res = await fetch(`${inst}/api/v1/videos/${track.id}`, { signal: AbortSignal.timeout(5000) });
+          if (res.ok) {
+            const data = await res.json();
+            const adaptive = (data.adaptiveFormats || []).filter(f => f.type && f.type.includes('audio'));
+            adaptive.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
+            if (adaptive.length > 0 && adaptive[0].url) {
+              const streamUrl = adaptive[0].url;
+              directAudioUrl = streamUrl;
+              updateProgress("70%", 70, "Downloading Audio Stream...");
+              const candidate = await fetchBlobCors(streamUrl, 20000);
+              if (candidate) {
+                audioBlob = candidate;
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+        if (audioBlob || directAudioUrl) break;
+      }
+    }
+
+    // Engine 3: Piped API Audio Streams
+    if (!audioBlob && !directAudioUrl) {
+      updateProgress("60%", 60, "Fetching Piped Stream...");
+      const pipedInstances = [
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.adminforge.de',
+        'https://pipedapi.colbycloud.us',
+        'https://pipedapi.leptons.xyz'
+      ];
+      for (const inst of pipedInstances) {
+        try {
+          const res = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
+          if (res.ok) {
+            const data = await res.json();
+            const audioStreams = (data.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+            if (audioStreams.length > 0 && audioStreams[0].url) {
+              const streamUrl = audioStreams[0].url;
+              directAudioUrl = streamUrl;
+              updateProgress("75%", 75, "Downloading Piped Stream...");
+              const candidate = await fetchBlobCors(streamUrl, 20000);
+              if (candidate) {
+                audioBlob = candidate;
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+        if (audioBlob || directAudioUrl) break;
+      }
+    }
+
+    // Engine 4: Loader.to / SaveNow Audio Converter (STRICTLY VIA CORS PROXIES ONLY)
+    if (!audioBlob && !directAudioUrl) {
+      updateProgress("65%", 65, "Connecting Converter...");
       const initTarget = `https://loader.to/ajax/download.php?format=mp3&url=${encodeURIComponent('https://www.youtube.com/watch?v=' + track.id)}`;
       const corsInitUrls = [
-        initTarget,
+        `https://corsproxy.io/?${encodeURIComponent(initTarget)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(initTarget)}`
       ];
 
@@ -1999,47 +2201,29 @@ async function downloadYtTrack(track, idx = null) {
           const initRes = await fetch(initUrl, { signal: AbortSignal.timeout(8000) });
           if (initRes.ok) {
             const initData = await initRes.json();
-            if (initData.id) {
-              updateProgress("25%", 25, "Converting MP3...");
-
+            if (initData && initData.id) {
               const streamId = initData.id;
               const rawProgUrl = `https://loader.to/api/progress?id=${streamId}`;
               const corsProgUrls = [
-                rawProgUrl,
+                `https://corsproxy.io/?${encodeURIComponent(rawProgUrl)}`,
                 `https://api.allorigins.win/raw?url=${encodeURIComponent(rawProgUrl)}`
               ];
 
-              for (let attempt = 1; attempt <= 50; attempt++) {
+              for (let attempt = 1; attempt <= 30; attempt++) {
                 await new Promise(r => setTimeout(r, 1000));
-                const pPct = Math.min(92, 25 + Math.round((attempt / 50) * 67));
-                updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/50)...`);
+                const pPct = Math.min(92, 65 + Math.round((attempt / 30) * 25));
+                updateProgress(`${pPct}%`, pPct, `Converting (${attempt}/30)...`);
 
                 for (const pUrl of corsProgUrls) {
                   try {
                     const pRes = await fetch(pUrl, { signal: AbortSignal.timeout(4000) });
                     if (pRes.ok) {
                       const pData = await pRes.json();
-                      if (pData.download_url) {
-                        updateProgress("95%", 95, "Downloading MP3 Blob...");
+                      if (pData && pData.download_url) {
                         directAudioUrl = pData.download_url;
-
-                        const blobProxies = [
-                          pData.download_url,
-                          `https://api.allorigins.win/raw?url=${encodeURIComponent(pData.download_url)}`
-                        ];
-
-                        for (const bUrl of blobProxies) {
-                          try {
-                            const audioFetch = await fetch(bUrl, { signal: AbortSignal.timeout(25000) });
-                            if (audioFetch.ok) {
-                              const candidateBlob = await audioFetch.blob();
-                              if (candidateBlob && candidateBlob.size > 200000) {
-                                audioBlob = candidateBlob;
-                                break;
-                              }
-                            }
-                          } catch (e) {}
-                        }
+                        updateProgress("95%", 95, "Saving MP3 Blob...");
+                        const candidate = await fetchBlobCors(pData.download_url, 25000);
+                        if (candidate) audioBlob = candidate;
                         break;
                       }
                     }
@@ -2055,41 +2239,8 @@ async function downloadYtTrack(track, idx = null) {
       }
     }
 
-    if (!audioBlob && !directAudioUrl) {
-      const pipedInstances = [
-        'https://pipedapi.kavin.rocks',
-        'https://pipedapi.adminforge.de',
-        'https://api.piped.privacydev.net',
-        'https://pipedapi.colbycloud.us',
-        'https://pipedapi.leptons.xyz'
-      ];
-
-      for (const inst of pipedInstances) {
-        try {
-          updateProgress("60%", 60, "Fetching Stream...");
-          const pipedRes = await fetch(`${inst}/streams/${track.id}`, { signal: AbortSignal.timeout(4000) });
-          if (pipedRes.ok) {
-            const pipedData = await pipedRes.json();
-            const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-            if (audioStreams.length > 0) {
-              directAudioUrl = audioStreams[0].url;
-              const streamFetch = await fetch(audioStreams[0].url, { signal: AbortSignal.timeout(15000) });
-              if (streamFetch.ok) {
-                const candidate = await streamFetch.blob();
-                if (candidate && candidate.size > 200000) {
-                  audioBlob = candidate;
-                  break;
-                }
-              }
-            }
-          }
-        } catch (e) {}
-        if (audioBlob || directAudioUrl) break;
-      }
-    }
-
     // SAVE SONG WITH audioBlob OR directAudioUrl (Guarantees 100% exact YouTube track playback!)
-    if ((audioBlob && audioBlob.size > 200000) || directAudioUrl) {
+    if ((audioBlob && audioBlob.size > 50000) || directAudioUrl) {
       updateProgress("95%", 95, "Processing Cover Art...");
       let coverBlob = null;
       try {

@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=57">
+  <link rel="stylesheet" href="styles.css?v=56">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -138,15 +138,20 @@
             <span class="badge" style="background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 10px;">MP3 & Playlist</span>
           </div>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; text-align: left;">
-            Download lagu atau playlist YouTube Music langsung ke offline library.
+            Ketik <b>judul lagu</b> (contoh: <i>Coldplay Yellow</i>) untuk MP3 320kbps instan, atau paste link YouTube.
           </p>
 
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="yt-url-input" class="search-input" placeholder="Paste YouTube / YT Music URL..." style="font-size: 13px; margin-bottom: 0;">
+            <input type="text" id="yt-url-input" class="search-input" placeholder="Cari judul lagu / paste link YouTube..." style="font-size: 13px; margin-bottom: 0;">
             <button class="btn-primary" id="btn-yt-fetch" style="white-space: nowrap; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Fetch
+              Cari / Fetch
             </button>
+          </div>
+          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+            <a href="https://cobalt.tools" target="_blank" style="font-size: 11px; color: var(--accent-color); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              🌐 Buka Web Cobalt Downloader ↗
+            </a>
           </div>
 
           <div id="yt-status-container" style="display: none; margin-top: 12px;">
@@ -617,6 +622,6 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=57"></script>
+  <script type="module" src="app.js?v=56"></script>
 </body>
 </html>
