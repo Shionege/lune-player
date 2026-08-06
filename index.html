@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=56">
+  <link rel="stylesheet" href="styles.css?v=57">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -169,6 +169,44 @@
             </div>
             <div id="yt-track-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;"></div>
           </div>
+        </div>
+      <!-- TAB: Discover & Search Online YouTube Music -->
+      <section class="tab-view" id="tab-discover">
+        <div class="page-title-row">
+          <div class="page-title-group">
+            <h1 class="page-title">Discover Online</h1>
+            <span class="page-subtitle" id="discover-subtitle">Search & Stream YouTube Music</span>
+          </div>
+        </div>
+
+        <!-- Sticky Search Box -->
+        <div class="search-box" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+          <span class="search-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="text" id="discover-search-input" class="search-input" placeholder="Search song title, artist, or playlist..." autocomplete="off" style="flex: 1;">
+          <button class="btn-primary pill-sm" id="btn-discover-search" style="padding: 8px 14px; font-size: 12px; white-space: nowrap;">Search</button>
+        </div>
+
+        <!-- Quick Trending Filter Chips -->
+        <div class="filter-chips" style="margin-bottom: 14px;">
+          <div class="chip active" data-discover-chip="top">Top Songs</div>
+          <div class="chip" data-discover-chip="indonesia">Indonesia</div>
+          <div class="chip" data-discover-chip="pop">Pop Hits</div>
+          <div class="chip" data-discover-chip="lofi">Lofi & Chill</div>
+        </div>
+
+        <!-- Discover Loading & Status Container -->
+        <div id="discover-status-container" style="display: none; margin-bottom: 12px; text-align: center;">
+          <div id="discover-status-text" style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">Loading trending music...</div>
+          <div class="progress-bar-container" style="height: 4px;">
+            <div class="progress-bar-fill" id="discover-progress-fill" style="width: 20%;"></div>
+          </div>
+        </div>
+
+        <!-- Discover Results List Container -->
+        <div class="song-list" id="discover-results-list">
+          <!-- Dynamically populated with YouTube Music search results & trending tracks -->
         </div>
       </section>
 
@@ -392,9 +430,9 @@
 
     <!-- Floating Navigation Dock -->
     <nav class="floating-nav-dock">
-      <div class="dock-item" data-tab="tab-transfer" title="Wi-Fi Import">
+      <div class="dock-item" data-tab="tab-discover" title="Discover">
         <span class="dock-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
         <div class="dock-dot"></div>
       </div>
@@ -622,6 +660,6 @@
   </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=56"></script>
+  <script type="module" src="app.js?v=57"></script>
 </body>
 </html>

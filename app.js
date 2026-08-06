@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initLibraryEvents();
   initPlaylistModalEvents();
   initTransferEvents();
+  initDiscoverEvents();
   initEqualizerEvents();
   initSheetControls();
   initSeekbarDragControls();
@@ -2620,3 +2621,228 @@ document.addEventListener('click', (e) => {
     handleFavToggle(e);
   }
 });
+
+/* ==========================================================================
+   YouTube Music Online Discover Tab (Search, Stream Online, 1-Tap Save Offline)
+   ========================================================================== */
+let discoverSearchResults = [];
+
+function initDiscoverEvents() {
+  const searchInput = document.getElementById('discover-search-input');
+  const btnSearch = document.getElementById('btn-discover-search');
+  const chips = document.querySelectorAll('[data-discover-chip]');
+
+  if (btnSearch && searchInput) {
+    btnSearch.addEventListener('click', () => {
+      const q = searchInput.value.trim();
+      if (q) searchOnlineYouTube(q);
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const q = searchInput.value.trim();
+        if (q) searchOnlineYouTube(q);
+      }
+    });
+  }
+
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const preset = chip.dataset.discoverChip;
+      let query = 'Top Songs 2026';
+      if (preset === 'indonesia') query = 'Indonesia Top Hits';
+      if (preset === 'pop') query = 'Pop Music Hits';
+      if (preset === 'lofi') query = 'Lofi Beats Chill';
+      if (searchInput) searchInput.value = query;
+      searchOnlineYouTube(query);
+    });
+  });
+
+  // Auto-load initial Trending Top Songs when page loads
+  searchOnlineYouTube('Indonesia Top Hits');
+}
+
+async function searchOnlineYouTube(query) {
+  const statusContainer = document.getElementById('discover-status-container');
+  const statusText = document.getElementById('discover-status-text');
+  const progressFill = document.getElementById('discover-progress-fill');
+  const resultsContainer = document.getElementById('discover-results-list');
+
+  if (!resultsContainer) return;
+
+  if (statusContainer) statusContainer.style.display = 'block';
+  if (statusText) statusText.textContent = `Searching "${query}"...`;
+  if (progressFill) progressFill.style.width = '30%';
+
+  try {
+    let tracks = [];
+    
+    // Query Piped Search API
+    const pipedRes = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
+    if (pipedRes.ok) {
+      const pipedData = await pipedRes.json();
+      tracks = (pipedData.items || []).filter(item => item.type === 'stream').map(item => ({
+        id: item.url ? item.url.split('v=')[1] : item.title,
+        title: item.title,
+        artist: item.uploaderName || 'YouTube Music',
+        duration: item.duration || 180,
+        thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.url ? item.url.split('v=')[1] : ''}/hqdefault.jpg`
+      }));
+    }
+
+    if (tracks.length === 0) {
+      // Fallback to Invidious Search API
+      const invRes = await fetch(`https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+      if (invRes.ok) {
+        const invData = await invRes.json();
+        tracks = (invData || []).slice(0, 20).map(v => ({
+          id: v.videoId,
+          title: v.title,
+          artist: v.author || 'YouTube Music',
+          duration: v.lengthSeconds || 180,
+          thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
+        }));
+      }
+    }
+
+    discoverSearchResults = tracks;
+    if (progressFill) progressFill.style.width = '100%';
+    if (statusText) statusText.textContent = `Found ${tracks.length} songs online`;
+    setTimeout(() => { if (statusContainer) statusContainer.style.display = 'none'; }, 1000);
+
+    renderDiscoverResultsUI(tracks);
+
+  } catch (err) {
+    console.warn("Online discover search error:", err);
+    if (statusText) statusText.textContent = `Search error: ${err.message}`;
+  }
+}
+
+function renderDiscoverResultsUI(tracks) {
+  const container = document.getElementById('discover-results-list');
+  if (!container) return;
+
+  if (tracks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 30px 0;">
+        <div class="empty-text">No online results found for your search query.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = tracks.map((track, idx) => {
+    // Check if song is already saved in offline library
+    const isSaved = allSongs.some(s => s.id && (s.id.includes(track.id) || String(s.title).toLowerCase() === String(track.title).toLowerCase()));
+    
+    return `
+      <div class="song-card" style="padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; flex: 1; min-width: 0; cursor: pointer;" data-discover-play-idx="${idx}">
+          <img src="${track.thumbnail}" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 12px; flex-shrink: 0;" alt="">
+          <div class="song-info" style="min-width: 0;">
+            <div class="song-title" style="font-size: 13.5px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(track.title)}</div>
+            <div class="song-subtext" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(track.artist)} • ${formatTime(track.duration)}</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+          <button class="header-action-pill" data-discover-play-btn="${idx}" title="Play Online" style="background: rgba(255,255,255,0.08); color: var(--text-primary); font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Play
+          </button>
+
+          <button class="header-action-pill primary" id="discover-save-btn-${idx}" data-discover-save-idx="${idx}" title="Save Offline" style="font-size: 11px; padding: 6px 12px; display: flex; align-items: center; gap: 4px; ${isSaved ? 'background: rgba(55, 236, 186, 0.15); color: #37ecba;' : ''}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            ${isSaved ? 'Saved' : 'Save'}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Attach Play Online Event Handlers
+  container.querySelectorAll('[data-discover-play-idx], [data-discover-play-btn]').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      const idx = parseInt(el.dataset.discoverPlayIdx || el.dataset.discoverPlayBtn, 10);
+      const track = discoverSearchResults[idx];
+      if (track) await playDiscoverSongOnline(track);
+    });
+  });
+
+  // Attach Save Offline Event Handlers
+  container.querySelectorAll('[data-discover-save-idx]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.discoverSaveIdx, 10);
+      const track = discoverSearchResults[idx];
+      if (track) await saveDiscoverSongOffline(track, btn);
+    });
+  });
+}
+
+async function playDiscoverSongOnline(track) {
+  try {
+    // Get Audio Stream URL via Piped API
+    const pipedRes = await fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
+    let streamUrl = null;
+    if (pipedRes.ok) {
+      const pipedData = await pipedRes.json();
+      const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+      if (audioStreams.length > 0) streamUrl = audioStreams[0].url;
+    }
+
+    if (!streamUrl) {
+      // Fallback Cobalt Audio Stream URL
+      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.id}`, isAudioOnly: true, aFormat: 'mp3' })
+      });
+      if (cobRes.ok) {
+        const cobData = await cobRes.json();
+        if (cobData.url) streamUrl = cobData.url;
+      }
+    }
+
+    if (streamUrl) {
+      const onlineSongObj = {
+        id: 'online_' + track.id,
+        title: track.title,
+        artist: track.artist,
+        album: 'YouTube Discover',
+        duration: track.duration,
+        audioBlob: streamUrl,
+        coverBlob: track.thumbnail,
+        isFavorite: false,
+        isOnline: true
+      };
+
+      playerEngine.setQueue([onlineSongObj], 0);
+      await playerEngine.playSong(onlineSongObj);
+      showMiniPlayer();
+      hasUserPlayedAudio = true;
+    } else {
+      alert("Unable to fetch online audio stream for this track.");
+    }
+  } catch (err) {
+    console.warn("Play discover song error:", err);
+    alert("Playback error: " + err.message);
+  }
+}
+
+async function saveDiscoverSongOffline(track, btnElement) {
+  if (btnElement) btnElement.textContent = "Saving...";
+  try {
+    await downloadYtTrack(track, btnElement);
+    if (btnElement) {
+      btnElement.textContent = "Saved";
+      btnElement.style.background = "rgba(55, 236, 186, 0.15)";
+      btnElement.style.color = "#37ecba";
+    }
+  } catch (err) {
+    if (btnElement) btnElement.textContent = "Retry";
+    console.warn("Save discover song error:", err);
+  }
+}
