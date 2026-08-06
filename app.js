@@ -2803,61 +2803,12 @@ function renderDiscoverResultsUI(tracks) {
   });
 }
 
-async function playDiscoverSongOnline(track) {
-  try {
-    let streamUrl = track.previewUrl;
-
-    if (!streamUrl || track.id.startsWith('itunes_')) {
-      const searchTarget = track.searchTerm || `${track.artist} - ${track.title}`;
-      try {
-        const cobRes = await fetch('https://api.cobalt.tools/api/json', {
-          method: 'POST',
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, isAudioOnly: true, aFormat: 'mp3' })
-        });
-        if (cobRes.ok) {
-          const cobData = await cobRes.json();
-          if (cobData.url) streamUrl = cobData.url;
-        }
-      } catch (e) {}
-
-      if (!streamUrl && track.previewUrl) {
-        streamUrl = track.previewUrl;
-      }
-    }
-
-    if (streamUrl) {
-      const onlineSongObj = {
-        id: 'online_' + (track.id || Date.now()),
-        title: track.title,
-        artist: track.artist,
-        album: track.album || 'YouTube Discover',
-        duration: track.duration,
-        audioBlob: streamUrl,
-        coverBlob: track.thumbnail,
-        isFavorite: false,
-        isOnline: true
-      };
-
-      playerEngine.setQueue([onlineSongObj], 0);
-      await playerEngine.playSong(onlineSongObj);
-      showMiniPlayer();
-      hasUserPlayedAudio = true;
-    } else {
-      alert("Unable to fetch online audio stream for this track.");
-    }
-  } catch (err) {
-    console.warn("Play discover song error:", err);
-    alert("Playback error: " + err.message);
-  }
-}
-
 async function resolveYouTubeVideoId(artist, title) {
   const query = `${artist} ${title}`.trim();
   const searchEndpoints = [
-    `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`,
     `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
-    `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`
+    `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
+    `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`
   ];
 
   for (const endpoint of searchEndpoints) {
@@ -2879,6 +2830,92 @@ async function resolveYouTubeVideoId(artist, title) {
   return null;
 }
 
+async function fetchFullAudioStream(artist, title, inputVideoId = null) {
+  let vId = inputVideoId;
+  if (!vId || vId.length !== 11 || vId.startsWith('itunes_')) {
+    vId = await resolveYouTubeVideoId(artist, title);
+  }
+
+  if (!vId) {
+    throw new Error("Video ID tidak ditemukan.");
+  }
+
+  const streamEndpoints = [
+    `https://inv.tux.pizza/api/v1/videos/${vId}`,
+    `https://invidious.nerdvpn.de/api/v1/videos/${vId}`,
+    `https://vid.puffyan.us/api/v1/videos/${vId}`,
+    `https://pipedapi.kavin.rocks/streams/${vId}`
+  ];
+
+  for (const endpoint of streamEndpoints) {
+    try {
+      const res = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        // Invidious format
+        if (data.adaptiveFormats) {
+          const audioFormats = data.adaptiveFormats.filter(f => f.type && f.type.includes('audio'));
+          audioFormats.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
+          if (audioFormats.length > 0 && audioFormats[0].url) {
+            return { vId, streamUrl: audioFormats[0].url };
+          }
+        }
+        // Piped format
+        if (data.audioStreams) {
+          const audioStreams = data.audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+          if (audioStreams.length > 0 && audioStreams[0].url) {
+            return { vId, streamUrl: audioStreams[0].url };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Stream fetch endpoint failed:", endpoint, e);
+    }
+  }
+
+  // Fallback Cobalt API if invidious endpoints are unreachable
+  try {
+    const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${vId}`, isAudioOnly: true, aFormat: 'mp3' })
+    });
+    if (cobRes.ok) {
+      const cobData = await cobRes.json();
+      if (cobData.url) {
+        return { vId, streamUrl: cobData.url };
+      }
+    }
+  } catch (e) {}
+
+  throw new Error("Gagal mengambil stream audio utuh.");
+}
+
+async function playDiscoverSongOnline(track) {
+  try {
+    const { streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
+    const onlineSongObj = {
+      id: 'online_' + (track.id || Date.now()),
+      title: track.title,
+      artist: track.artist,
+      album: track.album || 'YouTube Discover',
+      duration: track.duration,
+      audioBlob: streamUrl,
+      coverBlob: track.thumbnail,
+      isFavorite: false,
+      isOnline: true
+    };
+
+    playerEngine.setQueue([onlineSongObj], 0);
+    await playerEngine.play();
+    showMiniPlayer();
+    hasUserPlayedAudio = true;
+  } catch (err) {
+    console.warn("Play discover song error:", err);
+    alert("Gagal memutar lagu: " + err.message);
+  }
+}
+
 async function saveDiscoverSongOffline(track, btnElement) {
   if (btnElement) btnElement.textContent = "Saving...";
   try {
@@ -2888,59 +2925,14 @@ async function saveDiscoverSongOffline(track, btnElement) {
       if (coverRes.ok) coverBlob = await coverRes.blob();
     } catch (e) {}
 
-    let audioBlob = null;
-    const targetQuery = track.searchTerm || `${track.artist} - ${track.title}`;
-    const vId = await resolveYouTubeVideoId(track.artist, track.title);
+    const { vId, streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
 
-    // Try Cobalt API with resolved videoId or target query
-    const cobaltTargets = [
-      vId ? `https://www.youtube.com/watch?v=${vId}` : null,
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(targetQuery)}`
-    ].filter(Boolean);
+    const fetchRes = await fetch(streamUrl);
+    if (!fetchRes.ok) throw new Error("Gagal mengunduh data audio.");
+    const audioBlob = await fetchRes.blob();
 
-    for (const cobTarget of cobaltTargets) {
-      try {
-        const cobRes = await fetch('https://api.cobalt.tools/api/json', {
-          method: 'POST',
-          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: cobTarget, isAudioOnly: true, aFormat: 'mp3' })
-        });
-        if (cobRes.ok) {
-          const cobData = await cobRes.json();
-          if (cobData.url) {
-            const fetchRes = await fetch(cobData.url);
-            if (fetchRes.ok) {
-              const blob = await fetchRes.blob();
-              if (blob && blob.size > 200000) {
-                audioBlob = blob;
-                break;
-              }
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    // Try Piped Audio Streams if videoId exists
-    if (!audioBlob && vId) {
-      try {
-        const pipedRes = await fetch(`https://pipedapi.kavin.rocks/streams/${vId}`);
-        if (pipedRes.ok) {
-          const pipedData = await pipedRes.json();
-          const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-          if (audioStreams.length > 0) {
-            const fetchRes = await fetch(audioStreams[0].url);
-            if (fetchRes.ok) {
-              const blob = await fetchRes.blob();
-              if (blob && blob.size > 200000) audioBlob = blob;
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (!audioBlob) {
-      throw new Error("Gagal mengambil file MP3 utuh. Silakan coba klik Retry.");
+    if (!audioBlob || audioBlob.size < 100000) {
+      throw new Error("Ukuran file audio terlalu kecil atau terpotong.");
     }
 
     const songObj = {
