@@ -267,6 +267,11 @@ class AudioPlayerEngine {
     this.loadCurrentTrack();
   }
 
+  async playSong(song) {
+    this.setQueue([song], 0);
+    return this.play();
+  }
+
   loadCurrentTrack() {
     if (this.currentIndex < 0 || this.currentIndex >= this.queue.length) return;
     const currentSong = this.queue[this.currentIndex];
