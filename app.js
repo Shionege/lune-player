@@ -2676,48 +2676,69 @@ async function searchOnlineYouTube(query) {
   if (statusText) statusText.textContent = `Searching "${query}"...`;
   if (progressFill) progressFill.style.width = '30%';
 
-  try {
-    let tracks = [];
-    
-    // Query Piped Search API
-    const pipedRes = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
-    if (pipedRes.ok) {
-      const pipedData = await pipedRes.json();
-      tracks = (pipedData.items || []).filter(item => item.type === 'stream').map(item => ({
-        id: item.url ? item.url.split('v=')[1] : item.title,
-        title: item.title,
-        artist: item.uploaderName || 'YouTube Music',
-        duration: item.duration || 180,
-        thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.url ? item.url.split('v=')[1] : ''}/hqdefault.jpg`
-      }));
-    }
+  let tracks = [];
 
-    if (tracks.length === 0) {
-      // Fallback to Invidious Search API
-      const invRes = await fetch(`https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-      if (invRes.ok) {
-        const invData = await invRes.json();
-        tracks = (invData || []).slice(0, 20).map(v => ({
-          id: v.videoId,
-          title: v.title,
-          artist: v.author || 'YouTube Music',
-          duration: v.lengthSeconds || 180,
-          thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`
+  // Provider 1: iTunes Store Music API (100% CORS Enabled & Instant High-Res Artwork)
+  try {
+    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
+    if (itunesRes.ok) {
+      const itunesData = await itunesRes.json();
+      if (itunesData.results && itunesData.results.length > 0) {
+        tracks = itunesData.results.map(item => ({
+          id: `itunes_${item.trackId}`,
+          searchTerm: `${item.artistName} - ${item.trackName}`,
+          title: item.trackName,
+          artist: item.artistName || 'Various Artists',
+          album: item.collectionName || 'Single',
+          duration: Math.round((item.trackTimeMillis || 180000) / 1000),
+          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60,
+          previewUrl: item.previewUrl || null
         }));
       }
     }
-
-    discoverSearchResults = tracks;
-    if (progressFill) progressFill.style.width = '100%';
-    if (statusText) statusText.textContent = `Found ${tracks.length} songs online`;
-    setTimeout(() => { if (statusContainer) statusContainer.style.display = 'none'; }, 1000);
-
-    renderDiscoverResultsUI(tracks);
-
-  } catch (err) {
-    console.warn("Online discover search error:", err);
-    if (statusText) statusText.textContent = `Search error: ${err.message}`;
+  } catch (e) {
+    console.warn("iTunes Search API fallback:", e);
   }
+
+  // Provider 2: Invidious / Piped CORS Pool (If iTunes yielded no tracks)
+  if (tracks.length === 0) {
+    const searchEndpoints = [
+      'https://inv.tux.pizza/api/v1/search',
+      'https://invidious.nerdvpn.de/api/v1/search',
+      'https://api.piped.video/search'
+    ];
+
+    for (const endpoint of searchEndpoints) {
+      try {
+        const res = await fetch(`${endpoint}?q=${encodeURIComponent(query)}&type=video`, { signal: AbortSignal.timeout(4000) });
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : (data.items || []);
+          if (items.length > 0) {
+            tracks = items.slice(0, 25).map(v => ({
+              id: v.videoId || (v.url ? v.url.split('v=')[1] : v.title),
+              searchTerm: `${v.author || v.uploaderName || ''} - ${v.title}`,
+              title: v.title,
+              artist: v.author || v.uploaderName || 'YouTube Music',
+              album: 'YouTube Discover',
+              duration: v.lengthSeconds || v.duration || 180,
+              thumbnail: v.videoThumbnails ? v.videoThumbnails[0].url : (v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`)
+            }));
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn(`Search endpoint ${endpoint} failed:`, err);
+      }
+    }
+  }
+
+  discoverSearchResults = tracks;
+  if (progressFill) progressFill.style.width = '100%';
+  if (statusText) statusText.textContent = `Found ${tracks.length} songs online`;
+  setTimeout(() => { if (statusContainer) statusContainer.style.display = 'none'; }, 1000);
+
+  renderDiscoverResultsUI(tracks);
 }
 
 function renderDiscoverResultsUI(tracks) {
@@ -2740,7 +2761,7 @@ function renderDiscoverResultsUI(tracks) {
     return `
       <div class="song-card" style="padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
         <div style="display: flex; align-items: center; flex: 1; min-width: 0; cursor: pointer;" data-discover-play-idx="${idx}">
-          <img src="${track.thumbnail}" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 12px; flex-shrink: 0;" alt="">
+          <img src="${track.thumbnail}" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover; margin-right: 12px; flex-shrink: 0;" alt="" onerror="this.src='${getDefaultCoverUrl()}'">
           <div class="song-info" style="min-width: 0;">
             <div class="song-title" style="font-size: 13.5px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(track.title)}</div>
             <div class="song-subtext" style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(track.artist)} • ${formatTime(track.duration)}</div>
@@ -2784,34 +2805,33 @@ function renderDiscoverResultsUI(tracks) {
 
 async function playDiscoverSongOnline(track) {
   try {
-    // Get Audio Stream URL via Piped API
-    const pipedRes = await fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
-    let streamUrl = null;
-    if (pipedRes.ok) {
-      const pipedData = await pipedRes.json();
-      const audioStreams = (pipedData.audioStreams || []).sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-      if (audioStreams.length > 0) streamUrl = audioStreams[0].url;
-    }
+    let streamUrl = track.previewUrl;
 
-    if (!streamUrl) {
-      // Fallback Cobalt Audio Stream URL
-      const cobRes = await fetch('https://api.cobalt.tools/api/json', {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.id}`, isAudioOnly: true, aFormat: 'mp3' })
-      });
-      if (cobRes.ok) {
-        const cobData = await cobRes.json();
-        if (cobData.url) streamUrl = cobData.url;
+    if (!streamUrl || track.id.startsWith('itunes_')) {
+      const searchTarget = track.searchTerm || `${track.artist} - ${track.title}`;
+      try {
+        const cobRes = await fetch('https://api.cobalt.tools/api/json', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTarget)}`, isAudioOnly: true, aFormat: 'mp3' })
+        });
+        if (cobRes.ok) {
+          const cobData = await cobRes.json();
+          if (cobData.url) streamUrl = cobData.url;
+        }
+      } catch (e) {}
+
+      if (!streamUrl && track.previewUrl) {
+        streamUrl = track.previewUrl;
       }
     }
 
     if (streamUrl) {
       const onlineSongObj = {
-        id: 'online_' + track.id,
+        id: 'online_' + (track.id || Date.now()),
         title: track.title,
         artist: track.artist,
-        album: 'YouTube Discover',
+        album: track.album || 'YouTube Discover',
         duration: track.duration,
         audioBlob: streamUrl,
         coverBlob: track.thumbnail,
@@ -2835,7 +2855,8 @@ async function playDiscoverSongOnline(track) {
 async function saveDiscoverSongOffline(track, btnElement) {
   if (btnElement) btnElement.textContent = "Saving...";
   try {
-    await downloadYtTrack(track, btnElement);
+    const searchTarget = track.searchTerm || `${track.artist} - ${track.title}`;
+    await downloadYtTrack({ id: searchTarget, title: track.title, artist: track.artist, duration: track.duration, thumbnail: track.thumbnail }, btnElement);
     if (btnElement) {
       btnElement.textContent = "Saved";
       btnElement.style.background = "rgba(55, 236, 186, 0.15)";
