@@ -2688,6 +2688,45 @@ function initDiscoverEvents() {
   searchOnlineYouTube('Indonesia Top Hits');
 }
 
+async function searchArchiveAudioStreams(query) {
+  try {
+    const searchUrl = `https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(query)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=12&output=json`;
+    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      const docs = data.response?.docs || [];
+      return docs.map(d => ({
+        id: `archive_${d.identifier}`,
+        identifier: d.identifier,
+        title: d.title || query,
+        artist: d.creator || 'Archive Audio',
+        album: 'Public Music Archive',
+        duration: Math.round(parseFloat(d.duration) || 210),
+        thumbnail: `https://archive.org/services/img/${d.identifier}`
+      }));
+    }
+  } catch (e) {
+    console.warn("Archive.org search error:", e);
+  }
+  return [];
+}
+
+async function resolveArchiveMp3Url(identifier) {
+  try {
+    const metaUrl = `https://archive.org/metadata/${identifier}`;
+    const res = await fetch(metaUrl, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      const files = data.files || [];
+      const mp3s = files.filter(f => f.name && f.name.endsWith('.mp3'));
+      if (mp3s.length > 0) {
+        return `https://archive.org/download/${identifier}/${encodeURIComponent(mp3s[0].name)}`;
+      }
+    }
+  } catch (e) {}
+  return `https://archive.org/download/${identifier}/${identifier}.mp3`;
+}
+
 async function searchOnlineYouTube(query) {
   const statusContainer = document.getElementById('discover-status-container');
   const statusText = document.getElementById('discover-status-text');
@@ -2704,7 +2743,7 @@ async function searchOnlineYouTube(query) {
 
   // Provider 1: iTunes Store Music API (100% Open CORS & Instant High-Res 600x600 Artwork)
   try {
-    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
+    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
     if (itunesRes.ok) {
       const itunesData = await itunesRes.json();
       if (itunesData.results && itunesData.results.length > 0) {
@@ -2723,31 +2762,10 @@ async function searchOnlineYouTube(query) {
     console.warn("iTunes Search API error:", e);
   }
 
-  // Provider 2: AllOrigins CORS Proxy YouTube Search (If iTunes returned no tracks)
-  if (tracks.length === 0) {
-    try {
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/results?search_query=' + query)}`;
-      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(6000) });
-      if (res.ok) {
-        const html = await res.text();
-        const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-        const videoIds = [...new Set(matches.map(m => m[1]))].slice(0, 20);
-
-        if (videoIds.length > 0) {
-          tracks = videoIds.map(vId => ({
-            id: vId,
-            searchTerm: query,
-            title: `${query} (${vId})`,
-            artist: 'YouTube Music',
-            album: 'YouTube Discover',
-            duration: 210,
-            thumbnail: `https://i.ytimg.com/vi/${vId}/hqdefault.jpg`
-          }));
-        }
-      }
-    } catch (e) {
-      console.warn("AllOrigins Search fallback error:", e);
-    }
+  // Provider 2: Archive.org Public Audio Search
+  const archiveTracks = await searchArchiveAudioStreams(query);
+  if (archiveTracks.length > 0) {
+    tracks = [...tracks, ...archiveTracks];
   }
 
   discoverSearchResults = tracks;
@@ -2817,95 +2835,29 @@ function renderDiscoverResultsUI(tracks) {
   });
 }
 
-async function resolveYouTubeVideoId(artist, title) {
-  const query = `${artist} ${title}`.trim();
-  
-  // 1. Try AllOrigins CORS proxy YouTube search scraper
-  try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://www.youtube.com/results?search_query=' + query)}`;
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const html = await res.text();
-      const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-      if (match && match[1]) return match[1];
-    }
-  } catch (e) {}
-
-  // 2. Try Invidious / Piped APIs via CorsProxy
-  const searchEndpoints = [
-    `https://corsproxy.io/?${encodeURIComponent('https://inv.tux.pizza/api/v1/search?q=' + query + '&type=video')}`,
-    `https://corsproxy.io/?${encodeURIComponent('https://pipedapi.kavin.rocks/search?q=' + query + '&filter=music_songs')}`
-  ];
-
-  for (const endpoint of searchEndpoints) {
-    try {
-      const res = await fetch(endpoint, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : (data.items || []);
-        if (items.length > 0) {
-          const first = items[0];
-          const vId = first.videoId || (first.url ? first.url.split('v=')[1] : null);
-          if (vId && vId.length === 11) return vId;
-        }
-      }
-    } catch (e) {}
+async function fetchFullAudioStream(artist, title, inputTrackId = null) {
+  // If trackId is directly from Archive.org
+  if (inputTrackId && inputTrackId.startsWith('archive_')) {
+    const ident = inputTrackId.replace('archive_', '');
+    const mp3Url = await resolveArchiveMp3Url(ident);
+    if (mp3Url) return { streamUrl: mp3Url };
   }
 
-  return null;
-}
-
-async function fetchFullAudioStream(artist, title, inputVideoId = null) {
-  let vId = inputVideoId;
-  if (!vId || vId.length !== 11 || vId.startsWith('itunes_')) {
-    vId = await resolveYouTubeVideoId(artist, title);
+  // 1. Resolve via Archive.org for query: title + artist
+  const archiveDocs = await searchArchiveAudioStreams(`${title} ${artist}`);
+  if (archiveDocs.length > 0) {
+    const mp3Url = await resolveArchiveMp3Url(archiveDocs[0].identifier);
+    if (mp3Url) return { streamUrl: mp3Url };
   }
 
-  if (vId && vId.length === 11) {
-    const streamCandidates = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://inv.tux.pizza/api/v1/videos/' + vId)}`,
-      `https://corsproxy.io/?${encodeURIComponent('https://inv.tux.pizza/api/v1/videos/' + vId)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent('https://invidious.nerdvpn.de/api/v1/videos/' + vId)}`,
-      `https://corsproxy.io/?${encodeURIComponent('https://pipedapi.kavin.rocks/streams/' + vId)}`
-    ];
-
-    for (const target of streamCandidates) {
-      try {
-        const res = await fetch(target, { signal: AbortSignal.timeout(5000) });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.adaptiveFormats) {
-            const audioFormats = data.adaptiveFormats.filter(f => f.type && f.type.includes('audio'));
-            audioFormats.sort((a, b) => (parseInt(b.bitrate) || 0) - (parseInt(a.bitrate) || 0));
-            if (audioFormats.length > 0 && audioFormats[0].url) {
-              return { vId, streamUrl: audioFormats[0].url };
-            }
-          }
-          if (data.audioStreams) {
-            const audioStreams = data.audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-            if (audioStreams.length > 0 && audioStreams[0].url) {
-              return { vId, streamUrl: audioStreams[0].url };
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    try {
-      const cobUrl = `https://corsproxy.io/?${encodeURIComponent('https://api.cobalt.tools/api/json')}`;
-      const cobRes = await fetch(cobUrl, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${vId}`, isAudioOnly: true, aFormat: 'mp3' })
-      });
-      if (cobRes.ok) {
-        const cobData = await cobRes.json();
-        if (cobData.url) return { vId, streamUrl: cobData.url };
-      }
-    } catch (e) {}
+  // 2. Resolve via Archive.org for query: title
+  const archiveTitleOnly = await searchArchiveAudioStreams(title);
+  if (archiveTitleOnly.length > 0) {
+    const mp3Url = await resolveArchiveMp3Url(archiveTitleOnly[0].identifier);
+    if (mp3Url) return { streamUrl: mp3Url };
   }
 
-  return { vId: vId || 'fallback_id', streamUrl: null };
+  return { streamUrl: null };
 }
 
 async function playDiscoverSongOnline(track) {
@@ -2917,7 +2869,7 @@ async function playDiscoverSongOnline(track) {
     }
 
     if (!playUrl) {
-      alert("Stream audio online tidak tersedia untuk lagu ini saat ini.");
+      alert("Stream audio online tidak ditemukan untuk lagu ini saat ini.");
       return;
     }
 
@@ -2925,7 +2877,7 @@ async function playDiscoverSongOnline(track) {
       id: 'online_' + (track.id || Date.now()),
       title: track.title,
       artist: track.artist,
-      album: track.album || 'YouTube Discover',
+      album: track.album || 'Online Discover',
       duration: track.duration,
       audioBlob: playUrl,
       coverBlob: track.thumbnail,
@@ -2970,14 +2922,14 @@ async function saveDiscoverSongOffline(track, btnElement) {
     }
 
     if (!audioBlob || audioBlob.size < 100000) {
-      throw new Error("Gagal mengunduh file audio utuh. Silakan coba lagi.");
+      throw new Error("Gagal mengunduh file audio utuh. Silakan coba lagu lain di hasil pencarian.");
     }
 
     const songObj = {
-      id: 'yt_' + (track.id || Date.now()) + '_' + Date.now(),
+      id: 'track_' + (track.id || Date.now()) + '_' + Date.now(),
       title: track.title,
       artist: track.artist,
-      album: track.album || 'YouTube Music',
+      album: track.album || 'Online Downloader',
       duration: track.duration,
       explicit: false,
       audioBlob: audioBlob,
