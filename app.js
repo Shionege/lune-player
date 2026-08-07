@@ -2799,44 +2799,42 @@ async function searchOnlineYouTube(query) {
 
   let tracks = [];
 
-  const workerUrl = getActiveWorkerUrl();
-  if (workerUrl) {
-    try {
-      const wRes = await fetch(`${workerUrl}/search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(6000) });
-      if (wRes.ok) {
-        const wData = await wRes.json();
-        if (wData.results && wData.results.length > 0) {
-          tracks = wData.results;
-        }
+  // Primary Provider: Official iTunes Music API (100% Accurate Song Metadata & 600x600 Artwork)
+  try {
+    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=30`);
+    if (itunesRes.ok) {
+      const itunesData = await itunesRes.json();
+      if (itunesData.results && itunesData.results.length > 0) {
+        tracks = itunesData.results.map(item => ({
+          id: `itunes_${item.trackId}`,
+          searchTerm: `${item.artistName} - ${item.trackName}`,
+          title: item.trackName,
+          artist: item.artistName || 'Various Artists',
+          album: item.collectionName || 'Single',
+          duration: Math.round((item.trackTimeMillis || 180000) / 1000),
+          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
+        }));
       }
-    } catch (e) {
-      console.warn("Custom Cloudflare Worker search error:", e);
     }
+  } catch (e) {
+    console.warn("iTunes Search API error:", e);
   }
 
+  // Fallback: If iTunes API returns 0 results or fails, try Worker or Archive
   if (tracks.length === 0) {
-    // Provider 1: iTunes Store Music API (100% Accurate Song Metadata & 600x600 Artwork)
-    try {
-      const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
-      if (itunesRes.ok) {
-        const itunesData = await itunesRes.json();
-        if (itunesData.results && itunesData.results.length > 0) {
-          tracks = itunesData.results.map(item => ({
-            id: `itunes_${item.trackId}`,
-            searchTerm: `${item.artistName} - ${item.trackName}`,
-            title: item.trackName,
-            artist: item.artistName || 'Various Artists',
-            album: item.collectionName || 'Single',
-            duration: Math.round((item.trackTimeMillis || 180000) / 1000),
-            thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
-          }));
+    const workerUrl = getActiveWorkerUrl();
+    if (workerUrl) {
+      try {
+        const wRes = await fetch(`${workerUrl}/search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(6000) });
+        if (wRes.ok) {
+          const wData = await wRes.json();
+          if (wData.results && wData.results.length > 0) {
+            tracks = wData.results;
+          }
         }
-      }
-    } catch (e) {
-      console.warn("iTunes Search API error:", e);
+      } catch (e) {}
     }
 
-    // Provider 2: Fallback only if iTunes returned no tracks
     if (tracks.length === 0) {
       const archiveTracks = await searchArchiveAudioStreams(query);
       if (archiveTracks.length > 0) {
