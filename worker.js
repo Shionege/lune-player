@@ -77,7 +77,7 @@ async function searchAudio(query) {
 }
 
 async function streamAudio(query, originalRequest) {
-  // If request is from Archive.org
+  // If request is from Archive.org identifier
   if (query.startsWith('archive_')) {
     const ident = query.replace('archive_', '');
     try {
@@ -95,9 +95,12 @@ async function streamAudio(query, originalRequest) {
     return await fetchAndProxyAudio(`https://archive.org/download/${ident}/${ident}.mp3`, originalRequest);
   }
 
-  // 1. Search Archive.org for full MP3 stream
+  const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ').trim();
+
+  // 1. Search Archive.org for exact song title full MP3
   try {
-    const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(query)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=5&output=json`);
+    const qStr = `title:("${cleanQ}") AND mediatype:(audio)`;
+    const aRes = await fetch(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(qStr)}&fl[]=identifier,title,creator,duration&rows=5&output=json`);
     if (aRes.ok) {
       const aData = await aRes.json();
       const docs = aData.response?.docs || [];
@@ -115,14 +118,13 @@ async function streamAudio(query, originalRequest) {
     }
   } catch (e) {}
 
-  // 2. Fallback: Search Jamendo API for popular audio streams
+  // 2. Try iTunes Search API previewUrl proxy for instant audio stream
   try {
-    const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ');
-    const jRes = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c95&format=json&limit=5&order=popularity_desc&namesearch=${encodeURIComponent(cleanQ)}`);
-    if (jRes.ok) {
-      const jData = await jRes.json();
-      if (jData.results && jData.results.length > 0 && jData.results[0].audio) {
-        return await fetchAndProxyAudio(jData.results[0].audio, originalRequest);
+    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanQ)}&entity=song&limit=1`);
+    if (itunesRes.ok) {
+      const itunesData = await itunesRes.json();
+      if (itunesData.results && itunesData.results.length > 0 && itunesData.results[0].previewUrl) {
+        return await fetchAndProxyAudio(itunesData.results[0].previewUrl, originalRequest);
       }
     }
   } catch (e) {}
