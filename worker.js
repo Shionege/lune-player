@@ -39,7 +39,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v79.0.0',
+        version: 'v80.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/audio?q=query']
       }), {

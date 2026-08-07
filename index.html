@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=79">
+  <link rel="stylesheet" href="styles.css?v=80">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -381,7 +381,7 @@
         <div class="p2p-card" style="text-align: left;">
           <h3>App Information</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="app-info-version">
-            Lune Player PWA v79.0.0<br>
+            Lune Player PWA v80.0.0<br>
             Liquid Glass iOS 27 Design System.
           </p>
         </div>
@@ -413,17 +413,17 @@
     </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=79"></script>
+  <script type="module" src="app.js?v=80"></script>
 
   <!-- PWA Service Worker Registration & Automatic Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
-          // Unregister any old active service workers (e.g. v66, v78)
+          // Unregister any old active service workers (e.g. v66, v78, v79)
           const registrations = await navigator.serviceWorker.getRegistrations();
           for (let reg of registrations) {
-            if (reg.active && !reg.active.scriptURL.includes('v79')) {
+            if (reg.active && !reg.active.scriptURL.includes('v80')) {
               console.log('[SW] Unregistering stale SW:', reg.active.scriptURL);
               await reg.unregister();
             }
@@ -431,14 +431,14 @@
           if ('caches' in window) {
             const keys = await caches.keys();
             for (let k of keys) {
-              if (k !== 'anywhere-pwa-v79') {
+              if (k !== 'anywhere-pwa-v80') {
                 console.log('[SW] Purging old cache:', k);
                 await caches.delete(k);
               }
             }
           }
-          const newReg = await navigator.serviceWorker.register('./sw.js?v=79');
-          console.log('[SW] Registered v79:', newReg);
+          const newReg = await navigator.serviceWorker.register('./sw.js?v=80');
+          console.log('[SW] Registered v80:', newReg);
           newReg.update();
         } catch (err) {
           console.warn('[SW] Registration error:', err);

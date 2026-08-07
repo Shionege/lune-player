@@ -6,6 +6,7 @@
 class AudioPlayerEngine {
   constructor() {
     this.audio = new Audio();
+    this.audio.crossOrigin = 'anonymous';
     this.audio.setAttribute('playsinline', 'true');
     this.audio.setAttribute('webkit-playsinline', 'true');
     this.audio.setAttribute('x5-playsinline', 'true');
@@ -279,7 +280,11 @@ class AudioPlayerEngine {
 
     if (this.currentObjectUrl) {
       URL.revokeObjectURL(this.currentObjectUrl);
+      this.currentObjectUrl = null;
     }
+
+    // Explicitly enforce CORS anonymous mode on HTML5 audio element
+    this.audio.crossOrigin = 'anonymous';
 
     if (currentSong.audioBlob && (currentSong.audioBlob instanceof Blob || currentSong.audioBlob instanceof File)) {
       this.currentObjectUrl = URL.createObjectURL(currentSong.audioBlob);
