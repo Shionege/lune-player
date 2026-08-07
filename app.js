@@ -13,7 +13,7 @@ import { gdriveSync } from './gdrive.js';
 let allSongs = [];
 let allPlaylists = [];
 let filteredSongs = [];
-let currentFilter = 'all';
+let currentFilter = 'recents';
 let searchQuery = '';
 
 let hasUserPlayedAudio = false; // Ensures mini player remains hidden until user interacts
@@ -291,8 +291,6 @@ async function loadLibrarySongs() {
     console.error("Failed to load songs from IndexedDB:", e);
   }
 }
-
-let currentFilter = 'recents';
 
 function applyFilterAndSearch() {
   filteredSongs = allSongs.filter((song) => {
