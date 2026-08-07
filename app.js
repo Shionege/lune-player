@@ -2800,7 +2800,7 @@ async function searchOnlineYouTube(query) {
 
   let tracks = [];
 
-  // Primary Provider: Official iTunes Music API (100% Accurate Song Metadata, Artwork & Audio Stream)
+  // Primary Provider: Official iTunes Music API for accurate metadata & HQ 600x600 artwork
   try {
     const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=30`);
     if (itunesRes.ok) {
@@ -2813,8 +2813,7 @@ async function searchOnlineYouTube(query) {
           artist: item.artistName || 'Various Artists',
           album: item.collectionName || 'Single',
           duration: Math.round((item.trackTimeMillis || 180000) / 1000),
-          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60,
-          previewUrl: item.previewUrl
+          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
         }));
       }
     }
@@ -2950,12 +2949,8 @@ async function playDiscoverSongOnline(track) {
       playUrl = res.streamUrl;
     }
 
-    if (!playUrl && track.previewUrl) {
-      playUrl = track.previewUrl;
-    }
-
     if (!playUrl) {
-      alert("Stream audio tidak ditemukan untuk lagu ini.");
+      alert("Stream audio utuh tidak ditemukan untuk lagu ini saat ini.");
       return;
     }
 
@@ -2977,20 +2972,12 @@ async function playDiscoverSongOnline(track) {
       showMiniPlayer();
       hasUserPlayedAudio = true;
     } catch (playErr) {
-      console.warn("Primary stream failed, attempting previewUrl fallback:", playErr);
-      if (track.previewUrl && playUrl !== track.previewUrl) {
-        onlineSongObj.audioBlob = track.previewUrl;
-        playerEngine.setQueue([onlineSongObj], 0);
-        await playerEngine.play();
-        showMiniPlayer();
-        hasUserPlayedAudio = true;
-      } else {
-        alert("Sumber audio untuk lagu ini tidak dapat dimuat.");
-      }
+      console.warn("Audio playback error:", playErr);
+      alert("Gagal memutar audio utuh. Silakan coba lagu lain di hasil pencarian.");
     }
   } catch (err) {
     console.warn("Play discover song error:", err);
-    alert("Sumber audio tidak tersedia saat ini.");
+    alert("Sumber audio utuh tidak tersedia saat ini.");
   }
 }
 
@@ -3012,7 +2999,7 @@ async function saveDiscoverSongOffline(track, btnElement) {
       } catch (e) {}
     }
 
-    if (!audioBlob || audioBlob.size < 50000) {
+    if (!audioBlob || audioBlob.size < 100000) {
       const { streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
       if (streamUrl) {
         try {
@@ -3022,15 +3009,8 @@ async function saveDiscoverSongOffline(track, btnElement) {
       }
     }
 
-    if ((!audioBlob || audioBlob.size < 50000) && track.previewUrl) {
-      try {
-        const previewRes = await fetch(track.previewUrl);
-        if (previewRes.ok) audioBlob = await previewRes.blob();
-      } catch (e) {}
-    }
-
-    if (!audioBlob || audioBlob.size < 10000) {
-      throw new Error("Gagal mengunduh file audio lagu ini.");
+    if (!audioBlob || audioBlob.size < 100000) {
+      throw new Error("Gagal mengunduh file audio utuh. File audio tidak memenuhi syarat durasi penuh (>100KB).");
     }
 
     const songObj = {

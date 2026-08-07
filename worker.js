@@ -37,7 +37,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v75.0.0',
+        version: 'v77.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/audio?q=query']
       }), {
@@ -53,7 +53,7 @@ export default {
 };
 
 async function searchAudio(query) {
-  // Primary Provider: iTunes Store Search API (100% Accurate Song Metadata, Artwork & Instant Audio Stream)
+  // Primary Provider: Official iTunes Search API (100% Accurate Song Metadata & 600x600 Artwork)
   try {
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=30`);
     if (res.ok) {
@@ -66,7 +66,6 @@ async function searchAudio(query) {
           album: item.collectionName || 'Single',
           duration: Math.round((item.trackTimeMillis || 180000) / 1000),
           thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60,
-          previewUrl: item.previewUrl,
           searchTerm: `${item.artistName} - ${item.trackName}`
         }));
       }
@@ -97,10 +96,9 @@ async function streamAudio(query, originalRequest) {
 
   const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ').trim();
 
-  // 1. Search Archive.org for exact song title full MP3
+  // Search Archive.org for full MP3 stream
   try {
-    const qStr = `title:("${cleanQ}") AND mediatype:(audio)`;
-    const aRes = await fetch(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(qStr)}&fl[]=identifier,title,creator,duration&rows=5&output=json`);
+    const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(cleanQ)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=5&output=json`);
     if (aRes.ok) {
       const aData = await aRes.json();
       const docs = aData.response?.docs || [];
@@ -118,18 +116,7 @@ async function streamAudio(query, originalRequest) {
     }
   } catch (e) {}
 
-  // 2. Try iTunes Search API previewUrl proxy for instant audio stream
-  try {
-    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanQ)}&entity=song&limit=1`);
-    if (itunesRes.ok) {
-      const itunesData = await itunesRes.json();
-      if (itunesData.results && itunesData.results.length > 0 && itunesData.results[0].previewUrl) {
-        return await fetchAndProxyAudio(itunesData.results[0].previewUrl, originalRequest);
-      }
-    }
-  } catch (e) {}
-
-  return new Response(JSON.stringify({ error: 'Audio stream not found' }), {
+  return new Response(JSON.stringify({ error: 'Full length audio stream not found' }), {
     status: 404,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   });
