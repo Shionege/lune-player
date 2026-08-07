@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initEqualizerEvents();
   initSheetControls();
   initSeekbarDragControls();
+  initWorkerSettingsEvents();
   
   await loadLibrarySongs();
 
@@ -2688,6 +2689,65 @@ function initDiscoverEvents() {
   searchOnlineYouTube('Indonesia Top Hits');
 }
 
+let customWorkerUrl = localStorage.getItem('lune_worker_url') || '';
+
+function getActiveWorkerUrl() {
+  return (customWorkerUrl && customWorkerUrl.trim().startsWith('http')) ? customWorkerUrl.trim().replace(/\/$/, '') : null;
+}
+
+function initWorkerSettingsEvents() {
+  const workerInput = document.getElementById('setting-worker-url-input');
+  const btnSave = document.getElementById('btn-save-worker-url');
+  const btnReset = document.getElementById('btn-reset-worker-url');
+  const feedback = document.getElementById('worker-status-feedback');
+
+  if (workerInput) {
+    workerInput.value = customWorkerUrl;
+  }
+
+  function updateWorkerFeedback() {
+    if (!feedback) return;
+    const active = getActiveWorkerUrl();
+    if (active) {
+      feedback.textContent = `Status: Connected (${active})`;
+      feedback.style.color = '#37ecba';
+    } else {
+      feedback.textContent = 'Status: Using built-in audio engine';
+      feedback.style.color = 'var(--text-muted)';
+    }
+  }
+
+  updateWorkerFeedback();
+
+  if (btnSave) {
+    btnSave.addEventListener('click', () => {
+      const val = (workerInput ? workerInput.value : '').trim();
+      if (val && !val.startsWith('http')) {
+        alert('URL Worker harus diawali dengan http:// atau https://');
+        return;
+      }
+      customWorkerUrl = val;
+      if (val) {
+        localStorage.setItem('lune_worker_url', val);
+      } else {
+        localStorage.removeItem('lune_worker_url');
+      }
+      updateWorkerFeedback();
+      alert('Setting Cloudflare Worker berhasil disimpan!');
+    });
+  }
+
+  if (btnReset) {
+    btnReset.addEventListener('click', () => {
+      customWorkerUrl = '';
+      localStorage.removeItem('lune_worker_url');
+      if (workerInput) workerInput.value = '';
+      updateWorkerFeedback();
+      alert('Setting Worker telah di-reset.');
+    });
+  }
+}
+
 async function searchArchiveAudioStreams(query) {
   try {
     const searchUrl = `https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(query)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=12&output=json`;
@@ -2741,31 +2801,48 @@ async function searchOnlineYouTube(query) {
 
   let tracks = [];
 
-  // Provider 1: iTunes Store Music API (100% Open CORS & Instant High-Res 600x600 Artwork)
-  try {
-    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
-    if (itunesRes.ok) {
-      const itunesData = await itunesRes.json();
-      if (itunesData.results && itunesData.results.length > 0) {
-        tracks = itunesData.results.map(item => ({
-          id: `itunes_${item.trackId}`,
-          searchTerm: `${item.artistName} - ${item.trackName}`,
-          title: item.trackName,
-          artist: item.artistName || 'Various Artists',
-          album: item.collectionName || 'Single',
-          duration: Math.round((item.trackTimeMillis || 180000) / 1000),
-          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
-        }));
+  const workerUrl = getActiveWorkerUrl();
+  if (workerUrl) {
+    try {
+      const wRes = await fetch(`${workerUrl}/search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(6000) });
+      if (wRes.ok) {
+        const wData = await wRes.json();
+        if (wData.results && wData.results.length > 0) {
+          tracks = wData.results;
+        }
       }
+    } catch (e) {
+      console.warn("Custom Cloudflare Worker search error:", e);
     }
-  } catch (e) {
-    console.warn("iTunes Search API error:", e);
   }
 
-  // Provider 2: Archive.org Public Audio Search
-  const archiveTracks = await searchArchiveAudioStreams(query);
-  if (archiveTracks.length > 0) {
-    tracks = [...tracks, ...archiveTracks];
+  if (tracks.length === 0) {
+    // Provider 1: iTunes Store Music API (100% Open CORS & Instant High-Res 600x600 Artwork)
+    try {
+      const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
+      if (itunesRes.ok) {
+        const itunesData = await itunesRes.json();
+        if (itunesData.results && itunesData.results.length > 0) {
+          tracks = itunesData.results.map(item => ({
+            id: `itunes_${item.trackId}`,
+            searchTerm: `${item.artistName} - ${item.trackName}`,
+            title: item.trackName,
+            artist: item.artistName || 'Various Artists',
+            album: item.collectionName || 'Single',
+            duration: Math.round((item.trackTimeMillis || 180000) / 1000),
+            thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("iTunes Search API error:", e);
+    }
+
+    // Provider 2: Archive.org Public Audio Search
+    const archiveTracks = await searchArchiveAudioStreams(query);
+    if (archiveTracks.length > 0) {
+      tracks = [...tracks, ...archiveTracks];
+    }
   }
 
   discoverSearchResults = tracks;
@@ -2836,21 +2913,25 @@ function renderDiscoverResultsUI(tracks) {
 }
 
 async function fetchFullAudioStream(artist, title, inputTrackId = null) {
-  // If trackId is directly from Archive.org
+  const workerUrl = getActiveWorkerUrl();
+  if (workerUrl) {
+    const qParam = inputTrackId || `${title} ${artist}`;
+    return { streamUrl: `${workerUrl}/audio?q=${encodeURIComponent(qParam)}` };
+  }
+
+  // Fallbacks
   if (inputTrackId && inputTrackId.startsWith('archive_')) {
     const ident = inputTrackId.replace('archive_', '');
     const mp3Url = await resolveArchiveMp3Url(ident);
     if (mp3Url) return { streamUrl: mp3Url };
   }
 
-  // 1. Resolve via Archive.org for query: title + artist
   const archiveDocs = await searchArchiveAudioStreams(`${title} ${artist}`);
   if (archiveDocs.length > 0) {
     const mp3Url = await resolveArchiveMp3Url(archiveDocs[0].identifier);
     if (mp3Url) return { streamUrl: mp3Url };
   }
 
-  // 2. Resolve via Archive.org for query: title
   const archiveTitleOnly = await searchArchiveAudioStreams(title);
   if (archiveTitleOnly.length > 0) {
     const mp3Url = await resolveArchiveMp3Url(archiveTitleOnly[0].identifier);
