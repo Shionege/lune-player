@@ -589,6 +589,7 @@ async function loadPlaylists() {
 
 function renderPlaylists() {
   const container = document.getElementById('playlists-list');
+  if (!container) return;
 
   const favorites = allSongs.filter(s => s.isFavorite);
 
