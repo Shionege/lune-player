@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=70">
+  <link rel="stylesheet" href="styles.css?v=71">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -381,7 +381,7 @@
         <div class="p2p-card" style="text-align: left;">
           <h3>App Information</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="app-info-version">
-            Lune Player PWA v70.0.0<br>
+            Lune Player PWA v71.0.0<br>
             Liquid Glass iOS 27 Design System.
           </p>
         </div>
@@ -413,15 +413,15 @@
     </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=70"></script>
+  <script type="module" src="app.js?v=71"></script>
 
   <!-- PWA Service Worker Registration & Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=70')
+        navigator.serviceWorker.register('./sw.js?v=71')
           .then((reg) => {
-            console.log('[SW] Registered v70:', reg);
+            console.log('[SW] Registered v71:', reg);
             reg.update();
           })
           .catch((err) => {

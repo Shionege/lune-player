@@ -2948,7 +2948,7 @@ async function playDiscoverSongOnline(track) {
     }
 
     if (!playUrl) {
-      alert("Stream audio online tidak ditemukan untuk lagu ini saat ini.");
+      alert("Stream audio utuh belum tersedia untuk lagu ini saat ini. Silakan coba lagu lain di hasil pencarian.");
       return;
     }
 
@@ -2965,12 +2965,17 @@ async function playDiscoverSongOnline(track) {
     };
 
     playerEngine.setQueue([onlineSongObj], 0);
-    await playerEngine.play();
-    showMiniPlayer();
-    hasUserPlayedAudio = true;
+    try {
+      await playerEngine.play();
+      showMiniPlayer();
+      hasUserPlayedAudio = true;
+    } catch (playErr) {
+      console.warn("Audio playback error:", playErr);
+      alert("Sumber audio untuk lagu ini tidak dapat dimuat. Silakan coba lagu lain.");
+    }
   } catch (err) {
     console.warn("Play discover song error:", err);
-    alert("Gagal memutar lagu: " + err.message);
+    alert("Sumber audio tidak tersedia saat ini. Silakan coba lagu lain.");
   }
 }
 

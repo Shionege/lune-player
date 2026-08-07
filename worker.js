@@ -115,7 +115,7 @@ async function streamAudio(query, originalRequest) {
     return await fetchAndProxyAudio(`https://archive.org/download/${ident}/${ident}.mp3`, originalRequest);
   }
 
-  // Search Archive.org for full MP3 stream
+  // 1. Search Archive.org for full MP3 stream
   try {
     const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(query)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=5&output=json`);
     if (aRes.ok) {
@@ -131,6 +131,18 @@ async function streamAudio(query, originalRequest) {
             return await fetchAndProxyAudio(streamUrl, originalRequest);
           }
         }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Fallback: Search Jamendo API for popular audio streams
+  try {
+    const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ');
+    const jRes = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d30c95&format=json&limit=5&order=popularity_desc&namesearch=${encodeURIComponent(cleanQ)}`);
+    if (jRes.ok) {
+      const jData = await jRes.json();
+      if (jData.results && jData.results.length > 0 && jData.results[0].audio) {
+        return await fetchAndProxyAudio(jData.results[0].audio, originalRequest);
       }
     }
   } catch (e) {}
