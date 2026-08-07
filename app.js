@@ -2815,9 +2815,9 @@ async function searchOnlineYouTube(query) {
   }
 
   if (tracks.length === 0) {
-    // Provider 1: iTunes Store Music API (100% Open CORS & Instant High-Res 600x600 Artwork)
+    // Provider 1: iTunes Store Music API (100% Accurate Song Metadata & 600x600 Artwork)
     try {
-      const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
+      const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
       if (itunesRes.ok) {
         const itunesData = await itunesRes.json();
         if (itunesData.results && itunesData.results.length > 0) {
@@ -2836,10 +2836,12 @@ async function searchOnlineYouTube(query) {
       console.warn("iTunes Search API error:", e);
     }
 
-    // Provider 2: Archive.org Public Audio Search
-    const archiveTracks = await searchArchiveAudioStreams(query);
-    if (archiveTracks.length > 0) {
-      tracks = [...tracks, ...archiveTracks];
+    // Provider 2: Fallback only if iTunes returned no tracks
+    if (tracks.length === 0) {
+      const archiveTracks = await searchArchiveAudioStreams(query);
+      if (archiveTracks.length > 0) {
+        tracks = archiveTracks;
+      }
     }
   }
 

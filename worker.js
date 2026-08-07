@@ -53,15 +53,13 @@ export default {
 };
 
 async function searchAudio(query) {
-  let results = [];
-
-  // 1. Try iTunes Search API (Official metadata & 600x600 artwork)
+  // Primary Provider: iTunes Store Search API (100% Accurate Song Metadata & 600x600 Artwork)
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=20`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
     if (res.ok) {
       const data = await res.json();
       if (data.results && data.results.length > 0) {
-        results = data.results.map(item => ({
+        return data.results.map(item => ({
           id: `itunes_${item.trackId}`,
           title: item.trackName,
           artist: item.artistName || 'Various Artists',
@@ -74,26 +72,7 @@ async function searchAudio(query) {
     }
   } catch (e) {}
 
-  // 2. Try Archive.org Search API
-  try {
-    const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(query)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=10&output=json`);
-    if (aRes.ok) {
-      const aData = await aRes.json();
-      const docs = aData.response?.docs || [];
-      const aResults = docs.map(d => ({
-        id: `archive_${d.identifier}`,
-        title: d.title || query,
-        artist: d.creator || 'Archive Audio',
-        album: 'Public Music Archive',
-        duration: Math.round(parseFloat(d.duration) || 210),
-        thumbnail: `https://archive.org/services/img/${d.identifier}`,
-        searchTerm: `${d.creator || ''} ${d.title || ''}`
-      }));
-      results = [...results, ...aResults];
-    }
-  } catch (e) {}
-
-  return results;
+  return [];
 }
 
 async function streamAudio(query, originalRequest) {
