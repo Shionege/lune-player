@@ -37,7 +37,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v69.0.0',
+        version: 'v75.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/audio?q=query']
       }), {
@@ -53,9 +53,9 @@ export default {
 };
 
 async function searchAudio(query) {
-  // Primary Provider: iTunes Store Search API (100% Accurate Song Metadata & 600x600 Artwork)
+  // Primary Provider: iTunes Store Search API (100% Accurate Song Metadata, Artwork & Instant Audio Stream)
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=25`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=30`);
     if (res.ok) {
       const data = await res.json();
       if (data.results && data.results.length > 0) {
@@ -66,6 +66,7 @@ async function searchAudio(query) {
           album: item.collectionName || 'Single',
           duration: Math.round((item.trackTimeMillis || 180000) / 1000),
           thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60,
+          previewUrl: item.previewUrl,
           searchTerm: `${item.artistName} - ${item.trackName}`
         }));
       }

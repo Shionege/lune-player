@@ -2800,7 +2800,7 @@ async function searchOnlineYouTube(query) {
 
   let tracks = [];
 
-  // Primary Provider: Official iTunes Music API (100% Accurate Song Metadata & 600x600 Artwork)
+  // Primary Provider: Official iTunes Music API (100% Accurate Song Metadata, Artwork & Audio Stream)
   try {
     const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=30`);
     if (itunesRes.ok) {
@@ -2813,7 +2813,8 @@ async function searchOnlineYouTube(query) {
           artist: item.artistName || 'Various Artists',
           album: item.collectionName || 'Single',
           duration: Math.round((item.trackTimeMillis || 180000) / 1000),
-          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60
+          thumbnail: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : item.artworkUrl60,
+          previewUrl: item.previewUrl
         }));
       }
     }
@@ -2821,7 +2822,7 @@ async function searchOnlineYouTube(query) {
     console.warn("iTunes Search API error:", e);
   }
 
-  // Fallback: If iTunes API returns 0 results or fails, try Worker or Archive
+  // Fallback: If iTunes API returns 0 results, try Worker or Archive
   if (tracks.length === 0) {
     const workerUrl = getActiveWorkerUrl();
     if (workerUrl) {
@@ -2943,13 +2944,18 @@ async function fetchFullAudioStream(artist, title, inputTrackId = null) {
 async function playDiscoverSongOnline(track) {
   try {
     let playUrl = track.directMp3Url;
+
     if (!playUrl) {
       const res = await fetchFullAudioStream(track.artist, track.title, track.id);
       playUrl = res.streamUrl;
     }
 
+    if (!playUrl && track.previewUrl) {
+      playUrl = track.previewUrl;
+    }
+
     if (!playUrl) {
-      alert("Stream audio utuh belum tersedia untuk lagu ini saat ini. Silakan coba lagu lain di hasil pencarian.");
+      alert("Stream audio tidak ditemukan untuk lagu ini.");
       return;
     }
 
@@ -2971,12 +2977,20 @@ async function playDiscoverSongOnline(track) {
       showMiniPlayer();
       hasUserPlayedAudio = true;
     } catch (playErr) {
-      console.warn("Audio playback error:", playErr);
-      alert("Sumber audio untuk lagu ini tidak dapat dimuat. Silakan coba lagu lain.");
+      console.warn("Primary stream failed, attempting previewUrl fallback:", playErr);
+      if (track.previewUrl && playUrl !== track.previewUrl) {
+        onlineSongObj.audioBlob = track.previewUrl;
+        playerEngine.setQueue([onlineSongObj], 0);
+        await playerEngine.play();
+        showMiniPlayer();
+        hasUserPlayedAudio = true;
+      } else {
+        alert("Sumber audio untuk lagu ini tidak dapat dimuat.");
+      }
     }
   } catch (err) {
     console.warn("Play discover song error:", err);
-    alert("Sumber audio tidak tersedia saat ini. Silakan coba lagu lain.");
+    alert("Sumber audio tidak tersedia saat ini.");
   }
 }
 
@@ -2998,16 +3012,25 @@ async function saveDiscoverSongOffline(track, btnElement) {
       } catch (e) {}
     }
 
-    if (!audioBlob || audioBlob.size < 100000) {
+    if (!audioBlob || audioBlob.size < 50000) {
       const { streamUrl } = await fetchFullAudioStream(track.artist, track.title, track.id);
       if (streamUrl) {
-        const fetchRes = await fetch(streamUrl);
-        if (fetchRes.ok) audioBlob = await fetchRes.blob();
+        try {
+          const fetchRes = await fetch(streamUrl);
+          if (fetchRes.ok) audioBlob = await fetchRes.blob();
+        } catch (e) {}
       }
     }
 
-    if (!audioBlob || audioBlob.size < 100000) {
-      throw new Error("Gagal mengunduh file audio utuh. Silakan coba lagu lain di hasil pencarian.");
+    if ((!audioBlob || audioBlob.size < 50000) && track.previewUrl) {
+      try {
+        const previewRes = await fetch(track.previewUrl);
+        if (previewRes.ok) audioBlob = await previewRes.blob();
+      } catch (e) {}
+    }
+
+    if (!audioBlob || audioBlob.size < 10000) {
+      throw new Error("Gagal mengunduh file audio lagu ini.");
     }
 
     const songObj = {
