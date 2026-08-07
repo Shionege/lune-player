@@ -1,5 +1,5 @@
 /**
- * Lune Player - Cloudflare Worker Audio Relay (v69)
+ * Lune Player - Cloudflare Worker Audio Relay (v79.0.0)
  * 100% CORS-Free Full-Length Audio Search, Streaming & Downloading Relay
  */
 
@@ -9,6 +9,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Range',
   'Access-Control-Expose-Headers': 'Content-Length, Content-Type, Content-Range'
 };
+
+let scClientIdCache = 'TwElDfIgW9RpAzLMUSy9g1VvI2Kao7my';
 
 export default {
   async fetch(request, env, ctx) {
@@ -37,7 +39,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v77.0.0',
+        version: 'v79.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/audio?q=query']
       }), {
@@ -53,7 +55,7 @@ export default {
 };
 
 async function searchAudio(query) {
-  // Primary Provider: Official iTunes Search API (100% Accurate Song Metadata & 600x600 Artwork)
+  // Primary Provider: Official iTunes Search API for 100% Accurate Song Metadata & 600x600 Artwork
   try {
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=30`);
     if (res.ok) {
@@ -75,28 +77,73 @@ async function searchAudio(query) {
   return [];
 }
 
-async function streamAudio(query, originalRequest) {
-  // If request is from Archive.org identifier
-  if (query.startsWith('archive_')) {
-    const ident = query.replace('archive_', '');
-    try {
-      const metaRes = await fetch(`https://archive.org/metadata/${ident}`);
-      if (metaRes.ok) {
-        const meta = await metaRes.json();
-        const files = meta.files || [];
-        const mp3s = files.filter(f => f.name && f.name.endsWith('.mp3'));
-        if (mp3s.length > 0) {
-          const directUrl = `https://archive.org/download/${ident}/${encodeURIComponent(mp3s[0].name)}`;
-          return await fetchAndProxyAudio(directUrl, originalRequest);
+async function getSoundCloudClientId() {
+  if (scClientIdCache) return scClientIdCache;
+  try {
+    const res = await fetch('https://soundcloud.com', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const jsMatches = [...html.matchAll(/src="(https:\/\/a-v2\.sndcdn\.com\/assets\/[^"]+\.js)"/g)];
+      for (const m of jsMatches.reverse().slice(0, 3)) {
+        const jres = await fetch(m[1]);
+        if (jres.ok) {
+          const jtext = await jres.text();
+          const cids = jtext.match(/client_id[:=]"([a-zA-Z0-9]{32})"/);
+          if (cids) {
+            scClientIdCache = cids[1];
+            return scClientIdCache;
+          }
         }
       }
-    } catch (e) {}
-    return await fetchAndProxyAudio(`https://archive.org/download/${ident}/${ident}.mp3`, originalRequest);
+    }
+  } catch (e) {}
+  return 'TwElDfIgW9RpAzLMUSy9g1VvI2Kao7my';
+}
+
+async function streamAudio(query, originalRequest) {
+  const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ').trim();
+  if (!cleanQ) {
+    return new Response(JSON.stringify({ error: 'Query parameter is empty' }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+    });
   }
 
-  const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ').trim();
+  // 1. Primary Engine: SoundCloud Full-Length Audio Stream Extractor (Duration > 100 seconds)
+  try {
+    const cid = await getSoundCloudClientId();
+    const scApi = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(cleanQ)}&client_id=${cid}&limit=10`;
+    const scRes = await fetch(scApi, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    if (scRes.ok) {
+      const scData = await scRes.json();
+      const tracks = scData.collection || [];
+      for (const tr of tracks) {
+        // Must be full track (> 100 seconds)
+        if (tr.duration && tr.duration > 100000) {
+          const media = tr.media?.transcodings || [];
+          const prog = media.find(m => m.format?.protocol === 'progressive');
+          if (prog) {
+            const streamApi = `${prog.url}?client_id=${cid}`;
+            const sRes = await fetch(streamApi, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            });
+            if (sRes.ok) {
+              const sData = await sRes.json();
+              if (sData.url) {
+                return await fetchAndProxyAudio(sData.url, originalRequest);
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
 
-  // Search Archive.org for full MP3 stream
+  // 2. Secondary Engine: Archive.org Exact Title Search
   try {
     const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(cleanQ)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=5&output=json`);
     if (aRes.ok) {

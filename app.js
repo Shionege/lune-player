@@ -2914,7 +2914,7 @@ function renderDiscoverResultsUI(tracks) {
 async function fetchFullAudioStream(artist, title, inputTrackId = null) {
   const workerUrl = getActiveWorkerUrl();
   if (workerUrl) {
-    const qParam = inputTrackId || `${title} ${artist}`;
+    const qParam = `${artist} - ${title}`;
     return { streamUrl: `${workerUrl}/audio?q=${encodeURIComponent(qParam)}` };
   }
 
