@@ -46,7 +46,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v87.0.0',
+        version: 'v88.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/sources?q=query', '/audio?q=query']
       }), {
@@ -130,8 +130,13 @@ async function fetchAudioSources(query, workerOrigin = '') {
     }
   } catch (e) {}
 
-  const sources = [];
-  const bannedKeywords = ['cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', '8d', 'nightcore', 'speed up', 'sped up', 'tribute', 'mashup', 'edit', 'flip', 'bootleg'];
+  const bannedKeywords = [
+    'cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', 
+    '8d', 'nightcore', 'daycore', 'speed up', 'sped up', 'sped', 'tribute', 
+    'mashup', 'edit', 'flip', 'bootleg', 'piano', 'originally perfomed', 
+    'dj', 'breakbeat', 'funk', 'phonk', 'jedag', 'jedug', 'jj', 
+    'tiktok', 'club mix', 'remixer', 'bass boost', 'boosted', 'house mix'
+  ];
 
   // Tag verified record labels
   const officialLabels = [
@@ -382,7 +387,13 @@ async function streamAudio(urlObj, originalRequest) {
       const scData = await scRes.json();
       const tracks = scData.collection || [];
       
-      const bannedKeywords = ['cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', '8d', 'nightcore', 'speed up', 'sped up', 'tribute'];
+      const bannedKeywords = [
+        'cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', 
+        '8d', 'nightcore', 'daycore', 'speed up', 'sped up', 'sped', 'tribute', 
+        'mashup', 'edit', 'flip', 'bootleg', 'piano', 'originally perfomed', 
+        'dj', 'breakbeat', 'funk', 'phonk', 'jedag', 'jedug', 'jj', 
+        'tiktok', 'club mix', 'remixer', 'bass boost', 'boosted', 'house mix'
+      ];
       
       const originalTracks = [];
       const fallbackTracks = [];
