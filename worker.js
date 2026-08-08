@@ -39,7 +39,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v80.0.0',
+        version: 'v81.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/audio?q=query']
       }), {
@@ -111,31 +111,49 @@ async function streamAudio(query, originalRequest) {
     });
   }
 
-  // 1. Primary Engine: SoundCloud Full-Length Audio Stream Extractor (Duration > 100 seconds)
+  // 1. Primary Engine: SoundCloud Full-Length Audio Stream Extractor (Duration > 100s + Strict Original Filter)
   try {
     const cid = await getSoundCloudClientId();
-    const scApi = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(cleanQ)}&client_id=${cid}&limit=10`;
+    const scApi = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(cleanQ)}&client_id=${cid}&limit=20`;
     const scRes = await fetch(scApi, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
     });
     if (scRes.ok) {
       const scData = await scRes.json();
       const tracks = scData.collection || [];
+      
+      const bannedKeywords = ['cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', '8d', 'nightcore', 'speed up', 'sped up', 'tribute'];
+      
+      // Separate original recordings from covers/remixes
+      const originalTracks = [];
+      const fallbackTracks = [];
+
       for (const tr of tracks) {
-        // Must be full track (> 100 seconds)
         if (tr.duration && tr.duration > 100000) {
-          const media = tr.media?.transcodings || [];
-          const prog = media.find(m => m.format?.protocol === 'progressive');
-          if (prog) {
-            const streamApi = `${prog.url}?client_id=${cid}`;
-            const sRes = await fetch(streamApi, {
-              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-            });
-            if (sRes.ok) {
-              const sData = await sRes.json();
-              if (sData.url) {
-                return await fetchAndProxyAudio(sData.url, originalRequest);
-              }
+          const tTitle = (tr.title || '').toLowerCase();
+          const isBanned = bannedKeywords.some(b => tTitle.includes(b));
+          if (!isBanned) {
+            originalTracks.push(tr);
+          } else {
+            fallbackTracks.push(tr);
+          }
+        }
+      }
+
+      const targetList = originalTracks.length > 0 ? originalTracks : fallbackTracks;
+
+      for (const tr of targetList) {
+        const media = tr.media?.transcodings || [];
+        const prog = media.find(m => m.format?.protocol === 'progressive');
+        if (prog) {
+          const streamApi = `${prog.url}?client_id=${cid}`;
+          const sRes = await fetch(streamApi, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+          });
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.url) {
+              return await fetchAndProxyAudio(sData.url, originalRequest);
             }
           }
         }
