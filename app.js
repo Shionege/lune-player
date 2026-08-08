@@ -2866,7 +2866,12 @@ function renderDiscoverResultsUI(tracks) {
   }
 
   container.innerHTML = tracks.map((track, idx) => {
-    const isSaved = allSongs.some(s => s.id && (s.id.includes(track.id) || String(s.title).toLowerCase() === String(track.title).toLowerCase()));
+    const isSaved = allSongs.some(s => 
+      (s.id && track.id && (s.id === track.id || s.id.includes(track.id))) || 
+      (s.title && s.artist && track.title && track.artist &&
+       String(s.title).toLowerCase().trim() === String(track.title).toLowerCase().trim() && 
+       String(s.artist).toLowerCase().trim() === String(track.artist).toLowerCase().trim())
+    );
     
     return `
       <div class="song-card" style="padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
@@ -2888,7 +2893,7 @@ function renderDiscoverResultsUI(tracks) {
             Play
           </button>
 
-          <button class="header-action-pill primary" id="discover-save-btn-${idx}" data-discover-save-idx="${idx}" title="Save Offline" style="font-size: 11px; padding: 6px 12px; display: flex; align-items: center; gap: 4px; ${isSaved ? 'background: rgba(55, 236, 186, 0.15); color: #37ecba;' : ''}">
+          <button class="header-action-pill ${isSaved ? '' : 'primary'}" id="discover-save-btn-${idx}" data-discover-save-idx="${idx}" title="Save Offline" style="font-size: 11px; padding: 6px 12px; display: flex; align-items: center; gap: 4px; ${isSaved ? 'background: rgba(55, 236, 186, 0.15); color: #37ecba; border: 1px solid rgba(55, 236, 186, 0.4); box-shadow: none;' : ''}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             ${isSaved ? 'Saved' : 'Save'}
           </button>
