@@ -2963,16 +2963,18 @@ async function openSourcePickerModal(track) {
       }
 
       listEl.innerHTML = sources.map((src, sIdx) => {
-        const isOfficial = src.tag && (src.tag.includes('Official') || src.tag.includes('Studio Master'));
+        const isOfficialLabel = src.isOfficialLabel || (src.tag && src.tag.includes('Publisher Resmi Label'));
+        const isMaster = src.tag && (src.tag.includes('Studio Master') || src.tag.includes('Official Master') || isOfficialLabel);
+        
         return `
-          <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid ${isOfficial ? 'rgba(55, 236, 186, 0.3)' : 'rgba(255,255,255,0.06)'};">
+          <div style="background: ${isOfficialLabel ? 'rgba(255, 215, 0, 0.06)' : 'rgba(255,255,255,0.04)'}; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid ${isOfficialLabel ? 'rgba(255, 215, 0, 0.4)' : isMaster ? 'rgba(55, 236, 186, 0.35)' : 'rgba(255,255,255,0.06)'};">
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-                <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: ${isOfficial ? 'rgba(55, 236, 186, 0.2)' : 'rgba(255,255,255,0.1)'}; color: ${isOfficial ? '#37ecba' : '#bbb'};">${escapeHtml(src.tag)}</span>
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px; flex-wrap: wrap;">
+                <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: ${isOfficialLabel ? 'rgba(255, 215, 0, 0.2)' : isMaster ? 'rgba(55, 236, 186, 0.2)' : 'rgba(255,255,255,0.1)'}; color: ${isOfficialLabel ? '#ffd700' : isMaster ? '#37ecba' : '#bbb'};">${escapeHtml(src.tag)}</span>
                 <span style="font-size: 11px; color: var(--text-secondary);">${src.duration}</span>
               </div>
               <div style="font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(src.title)}</div>
-              <div style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(src.uploader)}</div>
+              <div style="font-size: 11px; color: ${isOfficialLabel ? '#ffd700' : 'var(--text-secondary)'}; margin-top: 1px;">Publisher / Uploader: <b>${escapeHtml(src.uploader)}</b></div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">

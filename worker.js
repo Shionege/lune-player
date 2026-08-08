@@ -46,7 +46,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v83.0.0',
+        version: 'v85.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/sources?q=query', '/audio?q=query']
       }), {
@@ -133,6 +133,13 @@ async function fetchAudioSources(query, workerOrigin = '') {
   const sources = [];
   const bannedKeywords = ['cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', '8d', 'nightcore', 'speed up', 'sped up', 'tribute', 'mashup', 'edit', 'flip', 'bootleg'];
 
+  // Tag verified record labels
+  const officialLabels = [
+    'sony music', 'warner music', 'universal music', 'vevo', 'topic', 'official',
+    'maksi music', 'denny caknan', 'coldplay', 'ed sheeran', 'ariana grande',
+    '35 production', 'musica studio', 'aquarius musikindo', 'trinity optima', 'nagaswara', 'vocal'
+  ];
+
   // 1. Fetch SoundCloud Candidates
   try {
     const cid = await getSoundCloudClientId();
@@ -154,14 +161,19 @@ async function fetchAudioSources(query, workerOrigin = '') {
           const prog = media.find(m => m.format?.protocol === 'progressive');
           if (prog) {
             const tTitle = (tr.title || '').toLowerCase();
+            const uName = (tr.user?.username || '').toLowerCase();
             const isBanned = bannedKeywords.some(b => tTitle.includes(b));
             const durDiff = officialTargetDur > 0 ? Math.abs(durSec - officialTargetDur) : 999;
+            const isOfficialLabel = officialLabels.some(l => uName.includes(l) || tTitle.includes(l));
             
             let tag = 'Studio Master';
             let priorityScore = 50;
 
-            if (!isBanned && (durDiff <= 12 || (tr.user && tr.user.username && tr.user.username.toLowerCase().includes('production')))) {
-              tag = 'Rekaman Studio Asli (Official Master)';
+            if (isOfficialLabel && !isBanned) {
+              tag = '⭐ Publisher Resmi Label (Official Label)';
+              priorityScore = 150 - durDiff;
+            } else if (!isBanned && (durDiff <= 10)) {
+              tag = 'Rekaman Studio Original (Studio Master)';
               priorityScore = 100 - durDiff;
             } else if (tTitle.includes('official') || tTitle.includes('original')) {
               tag = 'Official Audio';
@@ -190,6 +202,7 @@ async function fetchAudioSources(query, workerOrigin = '') {
               duration: durFormatted,
               durationSec: durSec,
               tag: tag,
+              isOfficialLabel: isOfficialLabel,
               priorityScore: priorityScore,
               streamUrl: `${workerOrigin}/audio?sc_prog=${encodeURIComponent(prog.url)}&cid=${cid}`
             });
