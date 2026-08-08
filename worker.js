@@ -1,6 +1,6 @@
 /**
- * Lune Player - Cloudflare Worker Audio Relay (v79.0.0)
- * 100% CORS-Free Full-Length Audio Search, Streaming & Downloading Relay
+ * Lune Player - Cloudflare Worker Audio Relay (v82.0.0)
+ * 100% CORS-Free Full-Length Audio Search, Multi-Source Version Picker, Streaming & Downloading Relay
  */
 
 const CORS_HEADERS = {
@@ -30,18 +30,25 @@ export default {
         });
       }
 
+      if (pathname === '/sources' || pathname === '/sources/') {
+        const query = url.searchParams.get('q') || '';
+        const sources = await fetchAudioSources(query, url.origin);
+        return new Response(JSON.stringify({ status: true, sources }), {
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        });
+      }
+
       if (pathname === '/audio' || pathname === '/audio/') {
-        const query = url.searchParams.get('q') || url.searchParams.get('id') || '';
-        const audioRes = await streamAudio(query, request);
+        const audioRes = await streamAudio(url, request);
         return audioRes;
       }
 
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v81.0.0',
+        version: 'v82.0.0',
         status: 'Active',
-        endpoints: ['/search?q=query', '/audio?q=query']
+        endpoints: ['/search?q=query', '/sources?q=query', '/audio?q=query']
       }), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
       });
@@ -102,7 +109,118 @@ async function getSoundCloudClientId() {
   return 'TwElDfIgW9RpAzLMUSy9g1VvI2Kao7my';
 }
 
-async function streamAudio(query, originalRequest) {
+async function fetchAudioSources(query, workerOrigin = '') {
+  const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ').trim();
+  if (!cleanQ) return [];
+
+  const sources = [];
+
+  // 1. Fetch SoundCloud Candidates
+  try {
+    const cid = await getSoundCloudClientId();
+    const scApi = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(cleanQ)}&client_id=${cid}&limit=12`;
+    const scRes = await fetch(scApi, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    if (scRes.ok) {
+      const scData = await scRes.json();
+      const collection = scData.collection || [];
+      for (const tr of collection) {
+        if (tr.duration && tr.duration > 90000) {
+          const durSec = Math.round(tr.duration / 1000);
+          const minutes = Math.floor(durSec / 60);
+          const seconds = durSec % 60;
+          const durFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+          
+          const media = tr.media?.transcodings || [];
+          const prog = media.find(m => m.format?.protocol === 'progressive');
+          if (prog) {
+            const tTitle = (tr.title || '').toLowerCase();
+            let tag = 'Studio Master';
+            if (tTitle.includes('official') || tTitle.includes('original')) tag = 'Official Audio';
+            else if (tTitle.includes('acoustic')) tag = 'Acoustic';
+            else if (tTitle.includes('remix')) tag = 'Remix';
+            else if (tTitle.includes('live')) tag = 'Live';
+            else if (tTitle.includes('slowed') || tTitle.includes('reverb')) tag = 'Slowed & Reverb';
+            else if (tTitle.includes('cover')) tag = 'Cover Version';
+
+            sources.push({
+              id: `sc_${tr.id}`,
+              title: tr.title,
+              uploader: tr.user?.username || 'SoundCloud Artist',
+              duration: durFormatted,
+              durationSec: durSec,
+              tag: tag,
+              streamUrl: `${workerOrigin}/audio?sc_prog=${encodeURIComponent(prog.url)}&cid=${cid}`
+            });
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Fetch Archive.org Candidates
+  try {
+    const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(cleanQ)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=5&output=json`);
+    if (aRes.ok) {
+      const aData = await aRes.json();
+      const docs = aData.response?.docs || [];
+      for (const d of docs) {
+        sources.push({
+          id: `archive_${d.identifier}`,
+          title: d.title || cleanQ,
+          uploader: d.creator || 'Archive.org',
+          duration: d.duration || 'Full',
+          durationSec: 200,
+          tag: 'Archive MP3',
+          streamUrl: `${workerOrigin}/audio?q=archive_${d.identifier}`
+        });
+      }
+    }
+  } catch (e) {}
+
+  return sources;
+}
+
+async function streamAudio(urlObj, originalRequest) {
+  const query = urlObj.searchParams.get('q') || urlObj.searchParams.get('id') || '';
+  const scProg = urlObj.searchParams.get('sc_prog');
+  const scCid = urlObj.searchParams.get('cid') || await getSoundCloudClientId();
+
+  // If specific SoundCloud progressive stream URL is requested
+  if (scProg) {
+    try {
+      const streamApi = `${scProg}?client_id=${scCid}`;
+      const sRes = await fetch(streamApi, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      });
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        if (sData.url) {
+          return await fetchAndProxyAudio(sData.url, originalRequest);
+        }
+      }
+    } catch (e) {}
+  }
+
+  // If request is from Archive.org identifier
+  if (query.startsWith('archive_')) {
+    const ident = query.replace('archive_', '');
+    try {
+      const metaRes = await fetch(`https://archive.org/metadata/${ident}`);
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        const files = meta.files || [];
+        const mp3s = files.filter(f => f.name && f.name.endsWith('.mp3'));
+        if (mp3s.length > 0) {
+          const directUrl = `https://archive.org/download/${ident}/${encodeURIComponent(mp3s[0].name)}`;
+          return await fetchAndProxyAudio(directUrl, originalRequest);
+        }
+      }
+    } catch (e) {}
+    return await fetchAndProxyAudio(`https://archive.org/download/${ident}/${ident}.mp3`, originalRequest);
+  }
+
   const cleanQ = query.replace(/^itunes_\d+\s*/, '').replace(/[-_]/g, ' ').trim();
   if (!cleanQ) {
     return new Response(JSON.stringify({ error: 'Query parameter is empty' }), {
@@ -111,7 +229,7 @@ async function streamAudio(query, originalRequest) {
     });
   }
 
-  // 1. Primary Engine: SoundCloud Full-Length Audio Stream Extractor (Duration > 100s + Strict Original Filter)
+  // Primary Engine: SoundCloud Full-Length Audio Stream Extractor (Duration > 100s + Strict Original Filter)
   try {
     const cid = await getSoundCloudClientId();
     const scApi = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(cleanQ)}&client_id=${cid}&limit=20`;
@@ -124,7 +242,6 @@ async function streamAudio(query, originalRequest) {
       
       const bannedKeywords = ['cover', 'remix', 'slowed', 'reverb', 'karaoke', 'instrumental', 'acoustic', '8d', 'nightcore', 'speed up', 'sped up', 'tribute'];
       
-      // Separate original recordings from covers/remixes
       const originalTracks = [];
       const fallbackTracks = [];
 

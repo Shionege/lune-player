@@ -2878,7 +2878,11 @@ function renderDiscoverResultsUI(tracks) {
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <button class="header-action-pill" data-discover-sources-btn="${idx}" title="Pilih Versi Audio / Source" style="background: rgba(55, 236, 186, 0.1); color: #37ecba; font-size: 11px; padding: 6px 8px; display: flex; align-items: center; gap: 4px; border: 1px solid rgba(55,236,186,0.3);">
+            ⚙️ Versi
+          </button>
+
           <button class="header-action-pill" data-discover-play-btn="${idx}" title="Play Online" style="background: rgba(255,255,255,0.08); color: var(--text-primary); font-size: 11px; padding: 6px 10px; display: flex; align-items: center; gap: 4px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Play
@@ -2892,6 +2896,15 @@ function renderDiscoverResultsUI(tracks) {
       </div>
     `;
   }).join('');
+
+  container.querySelectorAll('[data-discover-sources-btn]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.discoverSourcesBtn, 10);
+      const track = discoverSearchResults[idx];
+      if (track) await openSourcePickerModal(track);
+    });
+  });
 
   container.querySelectorAll('[data-discover-play-idx], [data-discover-play-btn]').forEach(el => {
     el.addEventListener('click', async (e) => {
@@ -2909,6 +2922,89 @@ function renderDiscoverResultsUI(tracks) {
       if (track) await saveDiscoverSongOffline(track, btn);
     });
   });
+}
+
+async function openSourcePickerModal(track) {
+  const modal = document.getElementById('source-picker-modal');
+  const backdrop = document.getElementById('source-picker-backdrop');
+  const closeBtn = document.getElementById('close-source-picker-btn');
+  const titleEl = document.getElementById('source-picker-title');
+  const listEl = document.getElementById('source-picker-list');
+
+  if (!modal || !listEl) return;
+
+  if (titleEl) titleEl.textContent = `Pilih Versi Audio: ${track.title}`;
+  listEl.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 25px 0;">🔍 Mencari seluruh versi audio asli & studio master...</div>`;
+  modal.style.display = 'flex';
+
+  const closeModal = () => { modal.style.display = 'none'; };
+  if (backdrop) backdrop.onclick = closeModal;
+  if (closeBtn) closeBtn.onclick = closeModal;
+
+  const workerUrl = getActiveWorkerUrl();
+  if (!workerUrl) {
+    listEl.innerHTML = `<div style="text-align: center; color: #ff5555; padding: 20px 0;">Cloudflare Worker belum terkonfigurasi di Settings.</div>`;
+    return;
+  }
+
+  try {
+    const res = await fetch(`${workerUrl}/sources?q=${encodeURIComponent(track.searchTerm || `${track.artist} ${track.title}`)}`);
+    if (res.ok) {
+      const data = await res.json();
+      const sources = data.sources || [];
+      if (sources.length === 0) {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 20px 0;">Tidak ada versi alternatif yang ditemukan.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = sources.map((src, sIdx) => {
+        const isOfficial = src.tag && (src.tag.includes('Official') || src.tag.includes('Studio Master'));
+        return `
+          <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid ${isOfficial ? 'rgba(55, 236, 186, 0.3)' : 'rgba(255,255,255,0.06)'};">
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: ${isOfficial ? 'rgba(55, 236, 186, 0.2)' : 'rgba(255,255,255,0.1)'}; color: ${isOfficial ? '#37ecba' : '#bbb'};">${escapeHtml(src.tag)}</span>
+                <span style="font-size: 11px; color: var(--text-secondary);">${src.duration}</span>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(src.title)}</div>
+              <div style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(src.uploader)}</div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <button class="header-action-pill" data-pick-play-idx="${sIdx}" style="font-size: 10.5px; padding: 5px 9px;">Play</button>
+              <button class="header-action-pill primary" data-pick-save-idx="${sIdx}" style="font-size: 10.5px; padding: 5px 9px;">Save</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('[data-pick-play-idx]').forEach(b => {
+        b.addEventListener('click', async () => {
+          const sIdx = parseInt(b.dataset.pickPlayIdx, 10);
+          const chosenSource = sources[sIdx];
+          if (chosenSource) {
+            closeModal();
+            const customTrackObj = { ...track, directMp3Url: chosenSource.streamUrl, title: chosenSource.title };
+            await playDiscoverSongOnline(customTrackObj);
+          }
+        });
+      });
+
+      listEl.querySelectorAll('[data-pick-save-idx]').forEach(b => {
+        b.addEventListener('click', async () => {
+          const sIdx = parseInt(b.dataset.pickSaveIdx, 10);
+          const chosenSource = sources[sIdx];
+          if (chosenSource) {
+            closeModal();
+            const customTrackObj = { ...track, directMp3Url: chosenSource.streamUrl, title: chosenSource.title };
+            await saveDiscoverSongOffline(customTrackObj, null);
+          }
+        });
+      });
+    }
+  } catch (e) {
+    listEl.innerHTML = `<div style="text-align: center; color: #ff5555; padding: 20px 0;">Gagal memuat daftar versi audio: ${e.message}</div>`;
+  }
 }
 
 async function fetchFullAudioStream(artist, title, inputTrackId = null) {
