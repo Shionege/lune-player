@@ -46,7 +46,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v85.0.0',
+        version: 'v86.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/sources?q=query', '/audio?q=query']
       }), {
@@ -201,6 +201,7 @@ async function fetchAudioSources(query, workerOrigin = '') {
               uploader: tr.user?.username || 'SoundCloud Artist',
               duration: durFormatted,
               durationSec: durSec,
+              provider: 'SoundCloud CDN',
               tag: tag,
               isOfficialLabel: isOfficialLabel,
               priorityScore: priorityScore,
@@ -212,7 +213,70 @@ async function fetchAudioSources(query, workerOrigin = '') {
     }
   } catch (e) {}
 
-  // 2. Fetch Archive.org Candidates
+  // 2. Provider: JioSaavn 320kbps Official Studio Audio Engine
+  try {
+    const sRes = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(cleanQ)}`);
+    if (sRes.ok) {
+      const sData = await sRes.json();
+      const songs = sData.data?.results || sData.results || [];
+      for (const s of songs.slice(0, 5)) {
+        const dUrls = s.downloadUrl || [];
+        const hqUrlObj = Array.isArray(dUrls) && dUrls.length > 0 ? dUrls[dUrls.length - 1] : null;
+        const streamUrl = hqUrlObj ? hqUrlObj.url : (typeof s.media_url === 'string' ? s.media_url : null);
+        if (streamUrl) {
+          const sArtist = s.primaryArtists || s.singers || 'Official Artist';
+          const sTitle = s.name || s.title || cleanQ;
+          const durSec = s.duration ? parseInt(s.duration, 10) : 210;
+          const minutes = Math.floor(durSec / 60);
+          const seconds = durSec % 60;
+          const durFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+          sources.push({
+            id: `saavn_${s.id || Math.random()}`,
+            title: sTitle,
+            uploader: `${sArtist} (Official Label)`,
+            duration: durFormatted,
+            durationSec: durSec,
+            provider: 'JioSaavn 320kbps Network',
+            tag: '⭐ Publisher Resmi Label (JioSaavn Studio 320k)',
+            isOfficialLabel: true,
+            priorityScore: 200, // Highest priority!
+            streamUrl: `${workerOrigin}/audio?direct_url=${encodeURIComponent(streamUrl)}`
+          });
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 3. Provider: Jamendo Music HQ
+  try {
+    const jRes = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=56d306e9&format=json&limit=4&namesearch=${encodeURIComponent(cleanQ)}`);
+    if (jRes.ok) {
+      const jData = await jRes.json();
+      const tracks = jData.results || [];
+      for (const jtr of tracks) {
+        if (jtr.audio) {
+          const durSec = jtr.duration || 180;
+          const minutes = Math.floor(durSec / 60);
+          const seconds = durSec % 60;
+          const durFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+          sources.push({
+            id: `jamendo_${jtr.id}`,
+            title: jtr.name,
+            uploader: `${jtr.artist_name} (Jamendo)`,
+            duration: durFormatted,
+            durationSec: durSec,
+            provider: 'Jamendo HQ Network',
+            tag: 'Jamendo HQ Studio MP3',
+            priorityScore: 90,
+            streamUrl: `${workerOrigin}/audio?direct_url=${encodeURIComponent(jtr.audio)}`
+          });
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 4. Provider: Internet Archive.org Candidates
   try {
     const aRes = await fetch(`https://archive.org/advancedsearch.php?q=%28${encodeURIComponent(cleanQ)}%29+AND+mediatype%3A%28audio%29&fl[]=identifier,title,creator,duration&rows=5&output=json`);
     if (aRes.ok) {
@@ -225,6 +289,7 @@ async function fetchAudioSources(query, workerOrigin = '') {
           uploader: d.creator || 'Archive.org',
           duration: d.duration || 'Full',
           durationSec: 200,
+          provider: 'Internet Archive Vault',
           tag: 'Archive MP3',
           priorityScore: 40,
           streamUrl: `${workerOrigin}/audio?q=archive_${d.identifier}`
@@ -233,7 +298,7 @@ async function fetchAudioSources(query, workerOrigin = '') {
     }
   } catch (e) {}
 
-  // Sort sources by priorityScore descending so Official Studio Masters are always #1!
+  // Sort sources by priorityScore descending so Official 320k Studio Masters are always #1!
   sources.sort((a, b) => b.priorityScore - a.priorityScore);
 
   return sources;
@@ -242,7 +307,13 @@ async function fetchAudioSources(query, workerOrigin = '') {
 async function streamAudio(urlObj, originalRequest) {
   const query = urlObj.searchParams.get('q') || urlObj.searchParams.get('id') || '';
   const scProg = urlObj.searchParams.get('sc_prog');
+  const directUrl = urlObj.searchParams.get('direct_url');
   const scCid = urlObj.searchParams.get('cid') || await getSoundCloudClientId();
+
+  // If direct audio URL is requested (e.g. JioSaavn 320k or Jamendo HQ)
+  if (directUrl) {
+    return await fetchAndProxyAudio(directUrl, originalRequest);
+  }
 
   // If specific SoundCloud progressive stream URL is requested
   if (scProg) {
