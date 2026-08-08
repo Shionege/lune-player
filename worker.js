@@ -46,7 +46,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v86.0.0',
+        version: 'v87.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/sources?q=query', '/audio?q=query']
       }), {
@@ -219,28 +219,42 @@ async function fetchAudioSources(query, workerOrigin = '') {
     if (sRes.ok) {
       const sData = await sRes.json();
       const songs = sData.data?.results || sData.results || [];
-      for (const s of songs.slice(0, 5)) {
+      for (const s of songs.slice(0, 6)) {
         const dUrls = s.downloadUrl || [];
         const hqUrlObj = Array.isArray(dUrls) && dUrls.length > 0 ? dUrls[dUrls.length - 1] : null;
         const streamUrl = hqUrlObj ? hqUrlObj.url : (typeof s.media_url === 'string' ? s.media_url : null);
         if (streamUrl) {
           const sArtist = s.primaryArtists || s.singers || 'Official Artist';
           const sTitle = s.name || s.title || cleanQ;
+          const sTitleLower = sTitle.toLowerCase();
+          const sArtistLower = sArtist.toLowerCase();
+          
+          const isBanned = bannedKeywords.some(b => sTitleLower.includes(b) || sArtistLower.includes(b) || sTitleLower.includes('originally perfomed') || sTitleLower.includes('piano'));
           const durSec = s.duration ? parseInt(s.duration, 10) : 210;
           const minutes = Math.floor(durSec / 60);
           const seconds = durSec % 60;
           const durFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
+          let tag = '⭐ Publisher Resmi Label (JioSaavn Studio 320k)';
+          let priorityScore = 200;
+          let isOfficial = true;
+
+          if (isBanned) {
+            tag = 'Cover / Karaoke Version';
+            priorityScore = 15;
+            isOfficial = false;
+          }
+
           sources.push({
             id: `saavn_${s.id || Math.random()}`,
             title: sTitle,
-            uploader: `${sArtist} (Official Label)`,
+            uploader: `${sArtist} ${isOfficial ? '(Official Label)' : '(Karaoke/Cover)'}`,
             duration: durFormatted,
             durationSec: durSec,
             provider: 'JioSaavn 320kbps Network',
-            tag: '⭐ Publisher Resmi Label (JioSaavn Studio 320k)',
-            isOfficialLabel: true,
-            priorityScore: 200, // Highest priority!
+            tag: tag,
+            isOfficialLabel: isOfficial,
+            priorityScore: priorityScore,
             streamUrl: `${workerOrigin}/audio?direct_url=${encodeURIComponent(streamUrl)}`
           });
         }
