@@ -1602,6 +1602,34 @@ function initTransferEvents() {
     });
   }
 
+  // Direct local file import in Settings tab
+  const btnDirectImport = document.getElementById('btn-import-direct-local');
+  const directFileInput = document.getElementById('direct-local-file-input');
+
+  if (btnDirectImport && directFileInput) {
+    btnDirectImport.addEventListener('click', () => directFileInput.click());
+    directFileInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      btnDirectImport.textContent = `⌛ Importing ${files.length} song(s)...`;
+      for (const file of files) {
+        try {
+          const songData = await extractMetadata(file);
+          await musicStorage.saveSong(songData);
+        } catch (err) {}
+      }
+      await loadLibrarySongs();
+      btnDirectImport.textContent = `✅ Berhasil mengimpor ${files.length} lagu!`;
+      setTimeout(() => {
+        btnDirectImport.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Impor File MP3 / Audio dari HP / Komputer
+        `;
+      }, 2500);
+    });
+  }
+
   // Start Receiver mode by default
   peerTransfer.startReceiverMode();
 

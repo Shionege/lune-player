@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=89">
+  <link rel="stylesheet" href="styles.css?v=90">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -341,6 +341,68 @@
           <h1 class="page-title">Settings</h1>
         </div>
 
+        <!-- Wi-Fi P2P & Local Music Import Card -->
+        <div class="p2p-card" style="text-align: left; margin-bottom: 14px;">
+          <h3 style="display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Wi-Fi & Local Music Import
+          </h3>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+            Transfer lagu tanpa kabel via Wi-Fi lokal dari Laptop ke iPhone/HP, atau pilih file MP3 langsung dari HP.
+          </p>
+
+          <!-- Wi-Fi Receiver Mode -->
+          <div style="background: rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; margin-top: 12px; border: 1px solid rgba(255, 255, 255, 0.08); text-align: center;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">P2P Receiver PIN (iPhone / Target)</div>
+            <div class="pin-display" id="receiver-pin" style="margin: 6px 0; font-size: 30px;">------</div>
+            <div id="p2p-status-text" style="font-size: 12px; color: var(--text-muted);">
+              Buka Lune Player di Laptop, masuk Settings & ketik 6-digit PIN di atas.
+            </div>
+
+            <div class="progress-bar-container" id="p2p-progress-container" style="display: none; margin-top: 10px;">
+              <div class="progress-bar-fill" id="p2p-progress-fill"></div>
+            </div>
+
+            <!-- Receiver Incoming Transfer Queue -->
+            <div id="p2p-receiver-queue-container" style="display: none; margin-top: 12px;">
+              <h4 style="font-size: 12px; color: var(--text-primary); margin-bottom: 6px; text-align: left;">Antrean Transfer Masuk</h4>
+              <div id="p2p-receiver-queue-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;"></div>
+            </div>
+          </div>
+
+          <!-- Wi-Fi Sender Mode (Connect via PIN) -->
+          <div style="background: rgba(255, 255, 255, 0.04); border-radius: 14px; padding: 14px; margin-top: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="font-size: 12.5px; font-weight: 600; color: #fff; margin-bottom: 6px;">Kirim Lagu ke Perangkat Lain (Sender Mode)</div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="target-pin-input" class="search-input" placeholder="Ketik PIN Target" maxlength="6" style="text-align: center; font-size: 15px; font-weight: 700; letter-spacing: 3px; padding: 8px;">
+              <button class="btn-primary" id="btn-connect-pin" style="white-space: nowrap; font-size: 12px; padding: 8px 14px;">Connect</button>
+            </div>
+
+            <div class="drop-zone" id="p2p-send-dropzone" style="display: none; margin-top: 10px; padding: 16px;">
+              <div style="font-weight: 600; font-size: 13px; color: #37ecba;">Terhubung! Klik / Drop file lagu untuk dikirim</div>
+              <button class="btn-secondary pill-sm" id="btn-p2p-select-files" style="margin-top: 8px; font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;">
+                Pilih File Lagu
+              </button>
+              <input type="file" id="p2p-multi-file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac" multiple style="display: none;">
+            </div>
+
+            <!-- Transfer Queue List UI -->
+            <div id="p2p-queue-container" style="display: none; margin-top: 10px;">
+              <h4 style="font-size: 12px; color: var(--text-primary); margin-bottom: 6px; text-align: left;">Status Pengiriman</h4>
+              <div id="p2p-queue-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto;"></div>
+            </div>
+          </div>
+
+          <!-- Direct Local File Import Button -->
+          <div style="margin-top: 12px;">
+            <button class="btn-secondary" id="btn-import-direct-local" style="width: 100%; font-size: 12.5px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Impor File MP3 / Audio dari HP / Komputer
+            </button>
+            <input type="file" id="direct-local-file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac" multiple style="display: none;">
+          </div>
+        </div>
+
         <!-- Cloudflare Worker Audio Relay Card (Option A) -->
         <div class="p2p-card" style="text-align: left;">
           <h3 style="display: flex; align-items: center; gap: 8px;">
@@ -381,7 +443,7 @@
         <div class="p2p-card" style="text-align: left;">
           <h3>App Information</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="app-info-version">
-            Lune Player PWA v89.0.0<br>
+            Lune Player PWA v90.0.0<br>
             Liquid Glass iOS 27 Design System.
           </p>
         </div>
@@ -430,17 +492,17 @@
     </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=89"></script>
+  <script type="module" src="app.js?v=90"></script>
 
   <!-- PWA Service Worker Registration & Automatic Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
-          // Unregister any old active service workers (e.g. v66, v78, v88)
+          // Unregister any old active service workers (e.g. v66, v78, v89)
           const registrations = await navigator.serviceWorker.getRegistrations();
           for (let reg of registrations) {
-            if (reg.active && !reg.active.scriptURL.includes('v89')) {
+            if (reg.active && !reg.active.scriptURL.includes('v90')) {
               console.log('[SW] Unregistering stale SW:', reg.active.scriptURL);
               await reg.unregister();
             }
@@ -448,14 +510,14 @@
           if ('caches' in window) {
             const keys = await caches.keys();
             for (let k of keys) {
-              if (k !== 'anywhere-pwa-v89') {
+              if (k !== 'anywhere-pwa-v90') {
                 console.log('[SW] Purging old cache:', k);
                 await caches.delete(k);
               }
             }
           }
-          const newReg = await navigator.serviceWorker.register('./sw.js?v=89');
-          console.log('[SW] Registered v89:', newReg);
+          const newReg = await navigator.serviceWorker.register('./sw.js?v=90');
+          console.log('[SW] Registered v90:', newReg);
           newReg.update();
         } catch (err) {
           console.warn('[SW] Registration error:', err);
