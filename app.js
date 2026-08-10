@@ -1698,6 +1698,21 @@ function initYouTubeDownloader() {
   const playlistCountLabel = document.getElementById('yt-playlist-count');
   const trackListContainer = document.getElementById('yt-track-list');
 
+  const settingYtInput = document.getElementById('setting-yt-url-input');
+  const settingBtnYtFetch = document.getElementById('setting-btn-yt-fetch');
+  if (settingBtnYtFetch && settingYtInput) {
+    settingBtnYtFetch.addEventListener('click', () => {
+      const q = settingYtInput.value.trim();
+      if (!q) return;
+      switchTab('tab-discover');
+      const searchInput = document.getElementById('discover-search-input');
+      if (searchInput) {
+        searchInput.value = q;
+        performDiscoverSearch(q);
+      }
+    });
+  }
+
   if (!btnFetch || !urlInput) return;
 
   btnFetch.addEventListener('click', async () => {

@@ -46,7 +46,7 @@ export default {
       // Root info page
       return new Response(JSON.stringify({
         app: 'Lune Player Audio Relay',
-        version: 'v90.0.0',
+        version: 'v91.0.0',
         status: 'Active',
         endpoints: ['/search?q=query', '/sources?q=query', '/audio?q=query']
       }), {
@@ -318,7 +318,51 @@ async function fetchAudioSources(query, workerOrigin = '') {
     }
   } catch (e) {}
 
-  // Sort sources by priorityScore descending so Official 320k Studio Masters are always #1!
+  // 5. Provider: YouTube Music Proxy Stream Engine
+  const ytSearchMirrors = [
+    `https://invidious.flokinet.to/api/v1/search?q=${encodeURIComponent(cleanQ)}&type=video`,
+    `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(cleanQ)}&type=video`,
+    `https://vid.puffyan.us/api/v1/search?q=${encodeURIComponent(cleanQ)}&type=video`
+  ];
+  for (const sUrl of ytSearchMirrors) {
+    try {
+      const invRes = await fetch(sUrl);
+      if (invRes.ok) {
+        const invData = await invRes.json();
+        if (Array.isArray(invData) && invData.length > 0) {
+          for (const v of invData.slice(0, 4)) {
+            if (v.videoId && v.lengthSeconds > 60 && v.lengthSeconds < 1200) {
+              const vTitle = v.title || '';
+              const vTitleLower = vTitle.toLowerCase();
+              const isBanned = bannedKeywords.some(b => vTitleLower.includes(b));
+              if (!isBanned) {
+                const durSec = v.lengthSeconds;
+                const minutes = Math.floor(durSec / 60);
+                const seconds = durSec % 60;
+                const durFormatted = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                
+                sources.push({
+                  id: `yt_${v.videoId}`,
+                  title: vTitle,
+                  uploader: `${v.author || 'YouTube Music'} (Official Stream)`,
+                  duration: durFormatted,
+                  durationSec: durSec,
+                  provider: 'YouTube Music Proxy',
+                  tag: '⭐ YouTube Audio Master',
+                  isOfficialLabel: true,
+                  priorityScore: 190,
+                  streamUrl: `${workerOrigin}/audio?yt_id=${v.videoId}`
+                });
+              }
+            }
+          }
+          if (sources.some(s => s.provider === 'YouTube Music Proxy')) break;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Sort sources by priorityScore descending so Official 320k / YouTube Masters are always #1!
   sources.sort((a, b) => b.priorityScore - a.priorityScore);
 
   return sources;
@@ -328,11 +372,35 @@ async function streamAudio(urlObj, originalRequest) {
   const query = urlObj.searchParams.get('q') || urlObj.searchParams.get('id') || '';
   const scProg = urlObj.searchParams.get('sc_prog');
   const directUrl = urlObj.searchParams.get('direct_url');
+  const ytId = urlObj.searchParams.get('yt_id');
   const scCid = urlObj.searchParams.get('cid') || await getSoundCloudClientId();
 
   // If direct audio URL is requested (e.g. JioSaavn 320k or Jamendo HQ)
   if (directUrl) {
     return await fetchAndProxyAudio(directUrl, originalRequest);
+  }
+
+  // If specific YouTube Music video ID is requested
+  if (ytId) {
+    const mirrorUrls = [
+      `https://invidious.flokinet.to/api/v1/videos/${ytId}`,
+      `https://inv.tux.pizza/api/v1/videos/${ytId}`,
+      `https://vid.puffyan.us/api/v1/videos/${ytId}`,
+      `https://invidious.drgns.space/api/v1/videos/${ytId}`
+    ];
+    for (const mUrl of mirrorUrls) {
+      try {
+        const mRes = await fetch(mUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          const audioStream = mData.adaptiveFormats?.find(f => f.type?.includes('audio') || f.mimeType?.includes('audio')) ||
+                              mData.audioStreams?.[0];
+          if (audioStream?.url) {
+            return await fetchAndProxyAudio(audioStream.url, originalRequest);
+          }
+        }
+      } catch (e) {}
+    }
   }
 
   // If specific SoundCloud progressive stream URL is requested
