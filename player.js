@@ -210,6 +210,25 @@ class AudioPlayerEngine {
       ['pause', () => this.pause()],
       ['previoustrack', () => this.prev()],
       ['nexttrack', () => this.next()],
+      ['repeatmode', (details) => {
+        if (details && details.repeatMode) {
+          if (details.repeatMode === 'one' || details.repeatMode === 'single') {
+            this.repeatMode = 'one';
+          } else if (details.repeatMode === 'all' || details.repeatMode === 'playlist') {
+            this.repeatMode = 'all';
+          } else {
+            this.repeatMode = 'off';
+          }
+        } else {
+          this.toggleRepeat();
+        }
+        if (this.onStateChange) this.onStateChange();
+        this.updateMediaSessionState();
+      }],
+      ['shuffle', () => {
+        this.toggleShuffle();
+        if (this.onStateChange) this.onStateChange();
+      }],
       // Unsetting seekto, seekforward, and seekbackward forces iOS Lock Screen & Control Center to render Previous Track and Next Track buttons
       ['seekto', null],
       ['seekforward', null],
