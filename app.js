@@ -1455,7 +1455,6 @@ function renderSheetQueueTracklist() {
    Wi-Fi P2P Transfer Integration
    ========================================================================== */
 function initTransferEvents() {
-  const pinDisplay = document.getElementById('receiver-pin');
   const btnRefreshPin = document.getElementById('btn-refresh-pin');
   const statusText = document.getElementById('p2p-status-text');
   const progressContainer = document.getElementById('p2p-progress-container');
@@ -1468,23 +1467,29 @@ function initTransferEvents() {
   const queueContainer = document.getElementById('p2p-queue-container');
   const queueList = document.getElementById('p2p-queue-list');
 
+  const updatePinUI = (pin) => {
+    document.querySelectorAll('#receiver-pin, .pin-display').forEach(el => {
+      el.textContent = pin;
+    });
+  };
+
   peerTransfer.onPinGenerated = (pin) => {
-    if (pinDisplay) pinDisplay.textContent = pin;
+    updatePinUI(pin);
   };
 
   // Display current PIN immediately if already generated
-  if (peerTransfer.currentPin && pinDisplay) {
-    pinDisplay.textContent = peerTransfer.currentPin;
+  if (peerTransfer.currentPin) {
+    updatePinUI(peerTransfer.currentPin);
   } else {
     const initialPin = peerTransfer.startReceiverMode();
-    if (pinDisplay && initialPin) pinDisplay.textContent = initialPin;
+    if (initialPin) updatePinUI(initialPin);
   }
 
   // Refresh PIN button click handler
   if (btnRefreshPin) {
     btnRefreshPin.addEventListener('click', () => {
       const freshPin = peerTransfer.startReceiverMode();
-      if (pinDisplay && freshPin) pinDisplay.textContent = freshPin;
+      if (freshPin) updatePinUI(freshPin);
       if (statusText) statusText.textContent = "🔄 PIN baru berhasil dibuat!";
     });
   }

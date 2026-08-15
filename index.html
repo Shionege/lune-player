@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=92">
+  <link rel="stylesheet" href="styles.css?v=93">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -58,119 +58,7 @@
     <!-- Main View Tabs Container -->
     <main class="views-container">
 
-      <!-- TAB 1: Transfer & Import -->
-      <section class="tab-view" id="tab-transfer">
-        <div class="page-title-row">
-          <h1 class="page-title">Wi-Fi & Online Import</h1>
-        </div>
 
-        <!-- Wi-Fi P2P Receiver Mode -->
-        <div class="p2p-card">
-          <h3 style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-            Receiver Mode
-          </h3>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-            Open app on Laptop, select Transfer, and enter this 6-digit PIN:
-          </p>
-
-          <div class="pin-display" id="receiver-pin">------</div>
-
-          <div class="progress-bar-container" id="p2p-progress-container" style="display: none; margin-top: 10px;">
-            <div class="progress-bar-fill" id="p2p-progress-fill"></div>
-          </div>
-          <div id="p2p-status-text" style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
-            Ready to receive music directly over local Wi-Fi.
-          </div>
-
-          <!-- Receiver Incoming Transfer Queue List UI -->
-          <div id="p2p-receiver-queue-container" style="display: none; margin-top: 14px;">
-            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px; text-align: left; display: flex; align-items: center; gap: 6px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Incoming Queue
-            </h4>
-            <div id="p2p-receiver-queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;"></div>
-          </div>
-        </div>
-
-        <!-- Wi-Fi P2P Laptop Sender Mode & Multi-File Queue -->
-        <div class="p2p-card">
-          <h3 style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
-            Sender Mode
-          </h3>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-            Enter target PIN generated on iPhone:
-          </p>
-
-          <div style="display: flex; gap: 8px; margin-top: 12px;">
-            <input type="text" id="target-pin-input" class="search-input" placeholder="e.g. 784920" maxlength="6" style="text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 4px;">
-            <button class="btn-primary" id="btn-connect-pin" style="white-space: nowrap;">Connect</button>
-          </div>
-
-          <div class="drop-zone" id="p2p-send-dropzone" style="display: none; margin-top: 14px;">
-            <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text-secondary);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </div>
-            <div style="font-weight: 600; font-size: 14px;">Connected! Click or Drag Audio Files to Transfer</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Transfers directly over local Wi-Fi</div>
-            <button class="btn-secondary pill-sm" id="btn-p2p-select-files" style="margin-top: 10px; display: inline-flex; align-items: center; gap: 6px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Select Files
-            </button>
-            <input type="file" id="p2p-multi-file-input" accept="audio/*,.mp3,.mp4,.m4a,.aac,.wav,.flac" multiple style="display: none;">
-          </div>
-
-          <!-- Transfer Queue List UI -->
-          <div id="p2p-queue-container" style="display: none; margin-top: 14px;">
-            <h4 style="font-size: 13px; color: var(--text-primary); margin-bottom: 8px; text-align: left;">Transfer Queue</h4>
-            <div id="p2p-queue-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;"></div>
-          </div>
-        </div>
-
-        <!-- YouTube Music Downloader -->
-        <div class="p2p-card" style="margin-top: 14px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-            <h3 style="display: flex; align-items: center; gap: 8px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
-              YouTube Downloader
-            </h3>
-            <span class="badge" style="background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); font-size: 11px; padding: 3px 8px; border-radius: 10px;">MP3 & Playlist</span>
-          </div>
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; text-align: left;">
-            Ketik <b>judul lagu</b> (contoh: <i>Coldplay Yellow</i>) untuk MP3 320kbps instan, atau paste link YouTube.
-          </p>
-
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="yt-url-input" class="search-input" placeholder="Cari judul lagu / paste link YouTube..." style="font-size: 13px; margin-bottom: 0;">
-            <button class="btn-primary" id="btn-yt-fetch" style="white-space: nowrap; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Cari / Fetch
-            </button>
-          </div>
-          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
-            <a href="https://cobalt.tools" target="_blank" style="font-size: 11px; color: var(--accent-color); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-              🌐 Buka Web Cobalt Downloader ↗
-            </a>
-          </div>
-
-          <div id="yt-status-container" style="display: none; margin-top: 12px;">
-            <div id="yt-status-text" style="font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 6px;"></div>
-            <div class="progress-bar-container" style="height: 6px;">
-              <div class="progress-bar-fill" id="yt-progress-fill" style="width: 0%;"></div>
-            </div>
-          </div>
-
-          <!-- YouTube Playlist Preview -->
-          <div id="yt-preview-container" style="display: none; margin-top: 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-              <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);" id="yt-playlist-count">0 Track Ditemukan</span>
-              <button class="btn-primary pill-sm" id="btn-yt-download-all" style="font-size: 12px;">Download Semua</button>
-            </div>
-            <div id="yt-track-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;"></div>
-          </div>
-        </div>
-      </section>
 
       <!-- TAB: Discover & Search Online YouTube Music -->
       <section class="tab-view" id="tab-discover">
@@ -471,7 +359,7 @@
         <div class="p2p-card" style="text-align: left;">
           <h3>App Information</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="app-info-version">
-            Lune Player PWA v92.0.0<br>
+            Lune Player PWA v93.0.0<br>
             Liquid Glass iOS 27 Design System.
           </p>
         </div>
@@ -520,17 +408,17 @@
     </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=92"></script>
+  <script type="module" src="app.js?v=93"></script>
 
   <!-- PWA Service Worker Registration & Automatic Cache Purge -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
-          // Unregister any old active service workers (e.g. v66, v78, v91)
+          // Unregister any old active service workers (e.g. v66, v78, v92)
           const registrations = await navigator.serviceWorker.getRegistrations();
           for (let reg of registrations) {
-            if (reg.active && !reg.active.scriptURL.includes('v92')) {
+            if (reg.active && !reg.active.scriptURL.includes('v93')) {
               console.log('[SW] Unregistering stale SW:', reg.active.scriptURL);
               await reg.unregister();
             }
@@ -538,14 +426,14 @@
           if ('caches' in window) {
             const keys = await caches.keys();
             for (let k of keys) {
-              if (k !== 'anywhere-pwa-v92') {
+              if (k !== 'anywhere-pwa-v93') {
                 console.log('[SW] Purging old cache:', k);
                 await caches.delete(k);
               }
             }
           }
-          const newReg = await navigator.serviceWorker.register('./sw.js?v=92');
-          console.log('[SW] Registered v92:', newReg);
+          const newReg = await navigator.serviceWorker.register('./sw.js?v=93');
+          console.log('[SW] Registered v93:', newReg);
           newReg.update();
         } catch (err) {
           console.warn('[SW] Registration error:', err);
