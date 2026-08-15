@@ -757,7 +757,10 @@ function openFullPagePlaylistDetail(playlistId) {
 
 function initPlaylistModalEvents() {
   const modal = document.getElementById('modal-create-playlist');
-  const btnCreate = document.getElementById('btn-create-playlist');
+  const createButtons = [
+    document.getElementById('btn-open-create-playlist'),
+    document.getElementById('btn-create-playlist')
+  ].filter(Boolean);
   const btnCancel = document.getElementById('btn-cancel-playlist');
   const btnSave = document.getElementById('btn-save-playlist');
   const trackChecklist = document.getElementById('playlist-track-checklist');
@@ -768,25 +771,22 @@ function initPlaylistModalEvents() {
   const coverPicker = document.getElementById('playlist-cover-picker');
   const coverTrigger = document.getElementById('btn-trigger-cover-picker');
 
-  if (btnCreate) {
-    btnCreate.addEventListener('click', () => {
-      if (allSongs.length === 0) {
-        alert("Library masih kosong. Impor lagu terlebih dahulu.");
-        return;
-      }
+  const openCreateModalHandler = () => {
+    selectedSongIdsForPlaylist.clear();
+    selectedCoverBlobForPlaylist = null;
+    if (nameInput) nameInput.value = 'Playlist Baru';
+    if (headerTitle) headerTitle.textContent = 'Playlist Baru';
+    if (trackChecklist) trackChecklist.style.display = 'none';
+    if (coverPicker) coverPicker.style.display = 'none';
 
-      selectedSongIdsForPlaylist.clear();
-      selectedCoverBlobForPlaylist = null;
-      if (nameInput) nameInput.value = 'Untitled Playlist';
-      if (headerTitle) headerTitle.textContent = 'Untitled Playlist';
-      if (trackChecklist) trackChecklist.style.display = 'none';
-      if (coverPicker) coverPicker.style.display = 'none';
+    renderPlaylistCreateTracklist();
+    updateCreatePlaylistCoverArt();
+    if (modal) modal.classList.add('open');
+  };
 
-      renderPlaylistCreateTracklist();
-      updateCreatePlaylistCoverArt();
-      if (modal) modal.classList.add('open');
-    });
-  }
+  createButtons.forEach(btn => {
+    btn.addEventListener('click', openCreateModalHandler);
+  });
 
   if (nameInput) {
     nameInput.addEventListener('input', (e) => {
