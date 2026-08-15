@@ -34,7 +34,7 @@
     }
   </style>
 
-  <link rel="stylesheet" href="styles.css?v=96">
+  <link rel="stylesheet" href="styles.css?v=97">
 
   <!-- Third-party CDNs with offline fallbacks -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
@@ -359,7 +359,7 @@
         <div class="p2p-card" style="text-align: left;">
           <h3>App Information</h3>
           <p style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;" id="app-info-version">
-            Lune Player PWA v96.0.0<br>
+            Lune Player PWA v97.0.0<br>
             Liquid Glass iOS 27 Design System.
           </p>
         </div>
@@ -408,7 +408,7 @@
     </div>
 
   <!-- App Main Logic -->
-  <script type="module" src="app.js?v=96"></script>
+  <script type="module" src="app.js?v=97"></script>
 
   <!-- PWA Service Worker Registration & Automatic Cache Update -->
   <script>
@@ -605,52 +605,84 @@
       </div>
     </div>
 
-    <!-- Create Playlist Modal -->
+    <!-- Create Playlist Modal (Clean iOS Music Layout) -->
     <div class="modal-overlay full-screen-slide" id="modal-create-playlist">
       <div class="modal-card ios-playlist-modal-card">
         
         <div class="ios-modal-header">
           <button class="btn-secondary pill-sm" id="btn-cancel-playlist">Cancel</button>
-          <div class="ios-modal-title" id="create-playlist-header-title">Untitled Playlist</div>
+          <div class="ios-modal-title" id="create-playlist-header-title">Playlist Baru</div>
           <button class="btn-primary pill-sm" id="btn-save-playlist">Create</button>
         </div>
 
-        <div class="modal-body" style="padding: 16px 0;">
+        <div class="modal-body" style="padding: 16px 0; display: flex; flex-direction: column; flex: 1; min-height: 0;">
           
-          <div class="ios-hero-row">
-            <div class="ios-art-block" id="btn-trigger-cover-picker">
+          <!-- Hero Section: Cover + Name -->
+          <div class="ios-hero-row" style="margin-bottom: 16px;">
+            <div class="ios-art-block" id="btn-trigger-cover-picker" title="Ganti Sampul Playlist">
               <img class="ios-hero-thumb" id="create-playlist-cover-img" alt="" style="display: none;">
               <div class="ios-art-placeholder" id="create-playlist-art-placeholder">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
               </div>
-              <span class="ios-caption">tap to edit</span>
+              <span class="ios-caption" style="font-size: 10px; margin-top: 2px;">ganti cover</span>
             </div>
             <div class="ios-title-block">
-              <input type="text" id="create-playlist-title-input" class="ios-title-input" placeholder="Playlist Name" autocomplete="off">
+              <input type="text" id="create-playlist-title-input" class="ios-title-input" placeholder="Nama Playlist" value="Playlist Baru" autocomplete="off">
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;" id="create-playlist-count-label">0 lagu dipilih</div>
             </div>
           </div>
 
-          <div class="playlist-cover-picker" id="playlist-cover-picker" style="display: none; margin-bottom: 14px;">
-            <!-- Populated dynamically -->
+          <!-- Hidden File Input for Custom Playlist Cover Image -->
+          <input type="file" id="playlist-custom-cover-input" accept="image/*" style="display: none;">
+
+          <!-- Search filter for songs inside modal -->
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="playlist-modal-search" class="search-input" placeholder="Cari lagu untuk dimasukkan..." style="margin-bottom: 0; font-size: 13px; flex: 1;">
+            <button class="btn-secondary pill-sm" id="btn-playlist-select-all" style="font-size: 11.5px; white-space: nowrap; padding: 7px 12px;">Pilih Semua</button>
           </div>
 
-          <div class="ios-add-music-btn" id="btn-trigger-add-music">
-            <div class="ios-add-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            </div>
-            <span class="ios-add-text">Add Music...</span>
-          </div>
-
-          <div class="modal-song-selector" id="playlist-track-checklist" style="display: none; margin-top: 14px;">
-            <!-- Track checkboxes -->
-          </div>
-
-          <div class="song-list" id="create-selected-songs-preview" style="margin-top: 14px;">
-            <!-- Rendered selected tracks -->
+          <!-- Single clean list of songs with checkmarks -->
+          <div class="modal-song-selector" id="playlist-track-checklist" style="display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; padding-right: 2px;">
+            <!-- Track rows populated dynamically -->
           </div>
 
         </div>
 
+      </div>
+    </div>
+
+    <!-- Cover Selection Dialog Sheet (Modal) -->
+    <div class="modal" id="modal-cover-choice" style="display: none; position: fixed; inset: 0; z-index: 10001; align-items: center; justify-content: center;">
+      <div class="modal-backdrop" id="cover-choice-backdrop" style="position: absolute; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px);"></div>
+      <div class="modal-content" style="position: relative; z-index: 10; width: 92%; max-width: 440px; border-radius: 24px; padding: 20px; background: rgba(24, 24, 30, 0.95); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">Pilih Sampul Playlist</h3>
+          <button class="icon-btn" id="close-cover-choice-btn" style="background: rgba(255,255,255,0.08); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; color: #fff; cursor: pointer;">✕</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn-secondary" id="btn-cover-upload-custom" style="padding: 12px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; justify-content: flex-start; background: rgba(255,255,255,0.06);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Upload Gambar dari Galeri / HP
+          </button>
+
+          <button class="btn-secondary" id="btn-cover-use-first-track" style="padding: 12px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; justify-content: flex-start; background: rgba(255,255,255,0.06);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Gunakan Artwork Lagu Pertama
+          </button>
+
+          <button class="btn-secondary" id="btn-cover-use-default" style="padding: 12px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; justify-content: flex-start; background: rgba(255,255,255,0.06); color: var(--text-muted);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            Gunakan Gradien Default (Tanpa Cover)
+          </button>
+        </div>
+
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Atau pilih dari artwork lagu:</div>
+          <div id="cover-choice-song-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-height: 140px; overflow-y: auto; padding: 4px 0;">
+            <!-- Grid of available covers -->
+          </div>
+        </div>
       </div>
     </div>
 

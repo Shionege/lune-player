@@ -276,19 +276,29 @@ class AudioPlayerEngine {
   }
 
   setQueue(songs, startIndex = 0) {
+    if (!songs || songs.length === 0) return;
     this.originalQueue = [...songs];
-    if (this.isShuffle) {
-      this.queue = this.shuffleArray([...songs]);
+    const safeIndex = startIndex >= 0 && startIndex < songs.length ? startIndex : 0;
+    const selectedSong = songs[safeIndex];
+
+    if (this.isShuffle && songs.length > 1) {
+      // Keep selected song at index 0, and shuffle all other songs around it
+      const otherSongs = songs.filter((_, idx) => idx !== safeIndex);
+      const shuffledOthers = this.shuffleArray(otherSongs);
+      this.queue = [selectedSong, ...shuffledOthers];
+      this.currentIndex = 0;
     } else {
       this.queue = [...songs];
+      this.currentIndex = safeIndex;
     }
-    this.currentIndex = startIndex >= 0 && startIndex < this.queue.length ? startIndex : 0;
     if (this.onQueueChange) this.onQueueChange(this.queue);
     this.loadCurrentTrack();
   }
 
-  async playSong(song) {
-    this.setQueue([song], 0);
+  async playSong(song, pool = []) {
+    const queuePool = pool && pool.length > 0 ? pool : [song];
+    const idx = queuePool.findIndex(s => s.id === song.id);
+    this.setQueue(queuePool, idx !== -1 ? idx : 0);
     return this.play();
   }
 
@@ -437,16 +447,32 @@ class AudioPlayerEngine {
     return this.repeatMode;
   }
 
-  toggleShuffle() {
+  toggleShuffle(fallbackPool = []) {
     this.isShuffle = !this.isShuffle;
-    const currentSong = this.queue[this.currentIndex];
+    const currentSong = this.getCurrentSong();
+    
+    // Ensure we have the full pool to shuffle through
+    let basePool = this.originalQueue && this.originalQueue.length > 1 ? [...this.originalQueue] : (fallbackPool && fallbackPool.length > 0 ? [...fallbackPool] : (currentSong ? [currentSong] : []));
+    
+    if (basePool.length > 0) {
+      this.originalQueue = [...basePool];
+    }
+
     if (this.isShuffle) {
-      this.queue = this.shuffleArray([...this.originalQueue]);
+      if (currentSong && this.originalQueue.length > 1) {
+        const otherSongs = this.originalQueue.filter(s => s.id !== currentSong.id);
+        this.queue = [currentSong, ...this.shuffleArray(otherSongs)];
+        this.currentIndex = 0;
+      } else {
+        this.queue = this.shuffleArray([...this.originalQueue]);
+        this.currentIndex = 0;
+      }
     } else {
       this.queue = [...this.originalQueue];
-    }
-    if (currentSong) {
-      this.currentIndex = this.queue.findIndex(s => s.id === currentSong.id);
+      if (currentSong) {
+        const foundIdx = this.queue.findIndex(s => s.id === currentSong.id);
+        this.currentIndex = foundIdx !== -1 ? foundIdx : 0;
+      }
     }
     if (this.onQueueChange) this.onQueueChange(this.queue);
     return this.isShuffle;
