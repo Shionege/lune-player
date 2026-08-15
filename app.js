@@ -782,7 +782,37 @@ function openFullPagePlaylistDetail(playlistId) {
   fullView.style.display = 'block';
 }
 
-let customPlaylistCoverBlob = null;
+let isPlaylistRangeMode = false;
+let rangeStartIndex = null;
+let currentPlaylistFilteredSongs = [];
+
+function setPlaylistRangeMode(active) {
+  isPlaylistRangeMode = active;
+  rangeStartIndex = null;
+  const guide = document.getElementById('playlist-range-guide');
+  const guideText = document.getElementById('playlist-range-guide-text');
+  const btnRange = document.getElementById('btn-playlist-range-mode');
+
+  if (isPlaylistRangeMode) {
+    if (guide) {
+      guide.style.display = 'flex';
+      if (guideText) guideText.innerHTML = `👉 <b>Langkah 1:</b> Sentuh lagu pertama (Start)`;
+    }
+    if (btnRange) {
+      btnRange.style.background = '#6366f1';
+      btnRange.style.color = '#ffffff';
+      btnRange.style.borderColor = '#6366f1';
+    }
+  } else {
+    if (guide) guide.style.display = 'none';
+    if (btnRange) {
+      btnRange.style.background = '';
+      btnRange.style.color = '';
+      btnRange.style.borderColor = 'rgba(255,255,255,0.15)';
+    }
+  }
+  renderPlaylistCreateTracklist(document.getElementById('playlist-modal-search')?.value || '');
+}
 
 function initPlaylistModalEvents() {
   const modal = document.getElementById('modal-create-playlist');
@@ -792,12 +822,13 @@ function initPlaylistModalEvents() {
   ].filter(Boolean);
   const btnCancel = document.getElementById('btn-cancel-playlist');
   const btnSave = document.getElementById('btn-save-playlist');
-  const trackChecklist = document.getElementById('playlist-track-checklist');
   const nameInput = document.getElementById('create-playlist-title-input');
   const headerTitle = document.getElementById('create-playlist-header-title');
   const countLabel = document.getElementById('create-playlist-count-label');
   const searchInput = document.getElementById('playlist-modal-search');
   const btnSelectAll = document.getElementById('btn-playlist-select-all');
+  const btnRangeMode = document.getElementById('btn-playlist-range-mode');
+  const btnCancelRange = document.getElementById('btn-cancel-range-mode');
   const coverTrigger = document.getElementById('btn-trigger-cover-picker');
   const fileInput = document.getElementById('playlist-custom-cover-input');
 
@@ -813,11 +844,14 @@ function initPlaylistModalEvents() {
   const openCreateModalHandler = () => {
     selectedSongIdsForPlaylist.clear();
     customPlaylistCoverBlob = null;
+    isPlaylistRangeMode = false;
+    rangeStartIndex = null;
     if (nameInput) nameInput.value = 'Playlist Baru';
     if (headerTitle) headerTitle.textContent = 'Playlist Baru';
     if (countLabel) countLabel.textContent = '0 lagu dipilih';
     if (searchInput) searchInput.value = '';
 
+    setPlaylistRangeMode(false);
     updateCreatePlaylistCoverUI();
     renderPlaylistCreateTracklist('');
     if (modal) modal.classList.add('open');
@@ -843,18 +877,27 @@ function initPlaylistModalEvents() {
 
   if (btnSelectAll) {
     btnSelectAll.addEventListener('click', () => {
-      const checkboxes = document.querySelectorAll('.playlist-song-checkbox');
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      checkboxes.forEach(cb => {
-        cb.checked = !allChecked;
-        if (!allChecked) {
-          selectedSongIdsForPlaylist.add(cb.value);
-        } else {
-          selectedSongIdsForPlaylist.delete(cb.value);
-        }
-      });
+      const allRenderedSelected = currentPlaylistFilteredSongs.length > 0 && currentPlaylistFilteredSongs.every(s => selectedSongIdsForPlaylist.has(s.id));
+      if (allRenderedSelected) {
+        currentPlaylistFilteredSongs.forEach(s => selectedSongIdsForPlaylist.delete(s.id));
+      } else {
+        currentPlaylistFilteredSongs.forEach(s => selectedSongIdsForPlaylist.add(s.id));
+      }
       if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
-      btnSelectAll.textContent = allChecked ? 'Pilih Semua' : 'Batal Pilih';
+      btnSelectAll.textContent = allRenderedSelected ? 'Pilih Semua' : 'Batal Pilih';
+      renderPlaylistCreateTracklist(searchInput ? searchInput.value : '');
+    });
+  }
+
+  if (btnRangeMode) {
+    btnRangeMode.addEventListener('click', () => {
+      setPlaylistRangeMode(!isPlaylistRangeMode);
+    });
+  }
+
+  if (btnCancelRange) {
+    btnCancelRange.addEventListener('click', () => {
+      setPlaylistRangeMode(false);
     });
   }
 
@@ -990,113 +1033,6 @@ function renderCoverChoiceSongGrid() {
   });
 }
 
-let isDragSelectionBound = false;
-
-function setupDragToSelect(container) {
-  if (!container || isDragSelectionBound) return;
-  isDragSelectionBound = true;
-
-  let isDragging = false;
-  let targetCheckState = true;
-  let lastCheckedId = null;
-  let autoScrollInterval = null;
-
-  const handlePointerAt = (clientX, clientY) => {
-    const el = document.elementFromPoint(clientX, clientY);
-    if (!el) return;
-
-    const row = el.closest('.track-check-row');
-    if (!row) return;
-
-    const cb = row.querySelector('.playlist-song-checkbox');
-    if (!cb) return;
-
-    const songId = cb.value;
-    if (songId !== lastCheckedId) {
-      lastCheckedId = songId;
-      cb.checked = targetCheckState;
-      if (targetCheckState) {
-        selectedSongIdsForPlaylist.add(songId);
-        row.style.background = 'rgba(34, 197, 94, 0.12)';
-      } else {
-        selectedSongIdsForPlaylist.delete(songId);
-        row.style.background = 'rgba(255, 255, 255, 0.03)';
-      }
-
-      const countLabel = document.getElementById('create-playlist-count-label');
-      if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
-
-      if (navigator.vibrate) {
-        try { navigator.vibrate(8); } catch (e) {}
-      }
-    }
-
-    // Auto-scroll when dragging near top/bottom boundaries
-    const rect = container.getBoundingClientRect();
-    const scrollThreshold = 50;
-    clearInterval(autoScrollInterval);
-
-    if (clientY < rect.top + scrollThreshold) {
-      const speed = Math.max(2, (rect.top + scrollThreshold - clientY) / 3);
-      autoScrollInterval = setInterval(() => { container.scrollTop -= speed; }, 16);
-    } else if (clientY > rect.bottom - scrollThreshold) {
-      const speed = Math.max(2, (clientY - (rect.bottom - scrollThreshold)) / 3);
-      autoScrollInterval = setInterval(() => { container.scrollTop += speed; }, 16);
-    }
-  };
-
-  const onPointerDown = (e) => {
-    const row = e.target.closest('.track-check-row');
-    if (!row) return;
-
-    const cb = row.querySelector('.playlist-song-checkbox');
-    if (!cb) return;
-
-    isDragging = true;
-    targetCheckState = !cb.checked;
-    cb.checked = targetCheckState;
-    if (targetCheckState) {
-      selectedSongIdsForPlaylist.add(cb.value);
-      row.style.background = 'rgba(34, 197, 94, 0.12)';
-    } else {
-      selectedSongIdsForPlaylist.delete(cb.value);
-      row.style.background = 'rgba(255, 255, 255, 0.03)';
-    }
-    lastCheckedId = cb.value;
-
-    const countLabel = document.getElementById('create-playlist-count-label');
-    if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
-  };
-
-  const onPointerMove = (e) => {
-    if (!isDragging) return;
-    if (e.cancelable) e.preventDefault();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    handlePointerAt(clientX, clientY);
-  };
-
-  const onPointerUp = () => {
-    if (!isDragging) return;
-    isDragging = false;
-    lastCheckedId = null;
-    clearInterval(autoScrollInterval);
-    container.querySelectorAll('.track-check-row').forEach(r => {
-      const cb = r.querySelector('.playlist-song-checkbox');
-      r.style.background = (cb && cb.checked) ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.03)';
-    });
-  };
-
-  container.addEventListener('mousedown', onPointerDown);
-  window.addEventListener('mousemove', onPointerMove, { passive: false });
-  window.addEventListener('mouseup', onPointerUp);
-
-  container.addEventListener('touchstart', onPointerDown, { passive: true });
-  window.addEventListener('touchmove', onPointerMove, { passive: false });
-  window.addEventListener('touchend', onPointerUp);
-  window.addEventListener('touchcancel', onPointerUp);
-}
-
 function renderPlaylistCreateTracklist(query = '') {
   const trackChecklist = document.getElementById('playlist-track-checklist');
   const countLabel = document.getElementById('create-playlist-count-label');
@@ -1109,44 +1045,74 @@ function renderPlaylistCreateTracklist(query = '') {
       (s.artist || '').toLowerCase().includes(query)
     );
   }
+  currentPlaylistFilteredSongs = songsToRender;
 
   if (songsToRender.length === 0) {
     trackChecklist.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 24px 0; font-size: 13px;">Tidak ada lagu yang cocok.</div>`;
     return;
   }
 
-  trackChecklist.innerHTML = songsToRender.map(song => {
+  trackChecklist.innerHTML = songsToRender.map((song, idx) => {
     const cleanTitle = (song.title || '').replace(/\[e\]/gi, '').trim();
     const coverSrc = safeCreateObjectURL(song.coverBlob, getDefaultCoverUrl(cleanTitle, song.artist));
     const isChecked = selectedSongIdsForPlaylist.has(song.id);
+    const isRangeStart = isPlaylistRangeMode && rangeStartIndex === idx;
 
     return `
-      <label class="track-check-row" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: ${isChecked ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255,255,255,0.03)'}; border-radius: 14px; cursor: pointer; user-select: none; transition: background 0.15s ease;">
-        <input type="checkbox" value="${song.id}" class="playlist-song-checkbox" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #22c55e; flex-shrink: 0; cursor: pointer;">
+      <div class="track-check-row" data-song-idx="${idx}" data-song-id="${song.id}" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: ${isRangeStart ? 'rgba(99, 102, 241, 0.25)' : (isChecked ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255,255,255,0.03)')}; border: ${isRangeStart ? '1.5px solid #6366f1' : '1px solid transparent'}; border-radius: 14px; cursor: pointer; user-select: none; transition: background 0.15s ease, border-color 0.15s ease;">
+        <input type="checkbox" value="${song.id}" class="playlist-song-checkbox" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #22c55e; flex-shrink: 0; cursor: pointer; pointer-events: none;">
         <img src="${coverSrc}" style="width: 42px; height: 42px; border-radius: 10px; object-fit: cover; flex-shrink: 0;" alt="" onerror="this.src='${getDefaultCoverUrl()}'">
         <div style="flex: 1; min-width: 0;">
           <div style="font-size: 13.5px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #ffffff;">${escapeHtml(cleanTitle)}</div>
           <div style="font-size: 11.5px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-top: 2px;">${escapeHtml(song.artist)}</div>
         </div>
-        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${formatTime(song.duration || 0)}</div>
-      </label>
+        ${isRangeStart ? '<span style="font-size: 10.5px; background: #6366f1; color: #fff; padding: 3px 8px; border-radius: 8px; font-weight: 700;">📍 Start</span>' : `<div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${formatTime(song.duration || 0)}</div>`}
+      </div>
     `;
   }).join('');
 
-  setupDragToSelect(trackChecklist);
+  trackChecklist.querySelectorAll('.track-check-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const idx = parseInt(row.dataset.songIdx, 10);
+      const songId = row.dataset.songId;
+      const guideText = document.getElementById('playlist-range-guide-text');
 
-  trackChecklist.querySelectorAll('.playlist-song-checkbox').forEach(cb => {
-    cb.addEventListener('change', (e) => {
-      const songId = e.target.value;
-      const row = cb.closest('.track-check-row');
-      if (e.target.checked) {
-        selectedSongIdsForPlaylist.add(songId);
-        if (row) row.style.background = 'rgba(34, 197, 94, 0.08)';
+      if (isPlaylistRangeMode) {
+        if (rangeStartIndex === null) {
+          rangeStartIndex = idx;
+          if (guideText) {
+            guideText.innerHTML = `📍 <b>Start dipilih:</b> "${escapeHtml(songsToRender[idx].title)}". Sekarang sentuh <b>Lagu Akhir (End)</b>.`;
+          }
+          renderPlaylistCreateTracklist(document.getElementById('playlist-modal-search')?.value || '');
+          if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) {}
+        } else {
+          // Range End chosen! Select all from start to end!
+          const start = Math.min(rangeStartIndex, idx);
+          const end = Math.max(rangeStartIndex, idx);
+          for (let i = start; i <= end; i++) {
+            selectedSongIdsForPlaylist.add(songsToRender[i].id);
+          }
+          const selectedCount = end - start + 1;
+          if (guideText) {
+            guideText.innerHTML = `✅ <b>Berhasil memilih ${selectedCount} lagu!</b> Sentuh lagu untuk rentang baru atau tekan Batal.`;
+          }
+          rangeStartIndex = null;
+          if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
+          renderPlaylistCreateTracklist(document.getElementById('playlist-modal-search')?.value || '');
+          if (navigator.vibrate) try { navigator.vibrate([15, 40, 15]); } catch (e) {}
+        }
       } else {
-        selectedSongIdsForPlaylist.delete(songId);
-        if (row) row.style.background = 'rgba(255, 255, 255, 0.03)';
+        // Normal single tap
+        if (selectedSongIdsForPlaylist.has(songId)) {
+          selectedSongIdsForPlaylist.delete(songId);
+        } else {
+          selectedSongIdsForPlaylist.add(songId);
+        }
+        const cb = row.querySelector('.playlist-song-checkbox');
+        if (cb) cb.checked = selectedSongIdsForPlaylist.has(songId);
+        row.style.background = selectedSongIdsForPlaylist.has(songId) ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.03)';
+        if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
       }
-      if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
     });
   });
 }
@@ -1519,6 +1485,12 @@ function openNowPlayingSheet() {
   if (!playerEngine.getCurrentSong() && allSongs.length > 0) {
     playerEngine.setQueue(allSongs, 0);
   }
+  const btnShuffle = document.getElementById('sheet-btn-shuffle');
+  if (btnShuffle) {
+    btnShuffle.classList.toggle('active', playerEngine.isShuffle);
+  }
+  updateRepeatButtonUI(playerEngine.repeatMode);
+
   const mini = document.getElementById('floating-mini-player');
   if (mini) {
     mini.classList.remove('visible');
@@ -1546,6 +1518,12 @@ function updateSheetTrackInfo(song, coverUrl, index) {
   document.getElementById('sheet-song-title').textContent = cleanTitle;
   document.getElementById('sheet-song-artist').textContent = song.artist;
   document.getElementById('sheet-explicit-badge').style.display = song.explicit ? 'inline-block' : 'none';
+
+  const btnShuffle = document.getElementById('sheet-btn-shuffle');
+  if (btnShuffle) {
+    btnShuffle.classList.toggle('active', playerEngine.isShuffle);
+  }
+  updateRepeatButtonUI(playerEngine.repeatMode);
 
   const headerPlaylist = document.getElementById('sheet-header-playlist');
   const headerSubtitle = document.getElementById('sheet-header-subtitle');
