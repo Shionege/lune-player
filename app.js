@@ -990,6 +990,113 @@ function renderCoverChoiceSongGrid() {
   });
 }
 
+let isDragSelectionBound = false;
+
+function setupDragToSelect(container) {
+  if (!container || isDragSelectionBound) return;
+  isDragSelectionBound = true;
+
+  let isDragging = false;
+  let targetCheckState = true;
+  let lastCheckedId = null;
+  let autoScrollInterval = null;
+
+  const handlePointerAt = (clientX, clientY) => {
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el) return;
+
+    const row = el.closest('.track-check-row');
+    if (!row) return;
+
+    const cb = row.querySelector('.playlist-song-checkbox');
+    if (!cb) return;
+
+    const songId = cb.value;
+    if (songId !== lastCheckedId) {
+      lastCheckedId = songId;
+      cb.checked = targetCheckState;
+      if (targetCheckState) {
+        selectedSongIdsForPlaylist.add(songId);
+        row.style.background = 'rgba(34, 197, 94, 0.12)';
+      } else {
+        selectedSongIdsForPlaylist.delete(songId);
+        row.style.background = 'rgba(255, 255, 255, 0.03)';
+      }
+
+      const countLabel = document.getElementById('create-playlist-count-label');
+      if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
+
+      if (navigator.vibrate) {
+        try { navigator.vibrate(8); } catch (e) {}
+      }
+    }
+
+    // Auto-scroll when dragging near top/bottom boundaries
+    const rect = container.getBoundingClientRect();
+    const scrollThreshold = 50;
+    clearInterval(autoScrollInterval);
+
+    if (clientY < rect.top + scrollThreshold) {
+      const speed = Math.max(2, (rect.top + scrollThreshold - clientY) / 3);
+      autoScrollInterval = setInterval(() => { container.scrollTop -= speed; }, 16);
+    } else if (clientY > rect.bottom - scrollThreshold) {
+      const speed = Math.max(2, (clientY - (rect.bottom - scrollThreshold)) / 3);
+      autoScrollInterval = setInterval(() => { container.scrollTop += speed; }, 16);
+    }
+  };
+
+  const onPointerDown = (e) => {
+    const row = e.target.closest('.track-check-row');
+    if (!row) return;
+
+    const cb = row.querySelector('.playlist-song-checkbox');
+    if (!cb) return;
+
+    isDragging = true;
+    targetCheckState = !cb.checked;
+    cb.checked = targetCheckState;
+    if (targetCheckState) {
+      selectedSongIdsForPlaylist.add(cb.value);
+      row.style.background = 'rgba(34, 197, 94, 0.12)';
+    } else {
+      selectedSongIdsForPlaylist.delete(cb.value);
+      row.style.background = 'rgba(255, 255, 255, 0.03)';
+    }
+    lastCheckedId = cb.value;
+
+    const countLabel = document.getElementById('create-playlist-count-label');
+    if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
+  };
+
+  const onPointerMove = (e) => {
+    if (!isDragging) return;
+    if (e.cancelable) e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    handlePointerAt(clientX, clientY);
+  };
+
+  const onPointerUp = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    lastCheckedId = null;
+    clearInterval(autoScrollInterval);
+    container.querySelectorAll('.track-check-row').forEach(r => {
+      const cb = r.querySelector('.playlist-song-checkbox');
+      r.style.background = (cb && cb.checked) ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.03)';
+    });
+  };
+
+  container.addEventListener('mousedown', onPointerDown);
+  window.addEventListener('mousemove', onPointerMove, { passive: false });
+  window.addEventListener('mouseup', onPointerUp);
+
+  container.addEventListener('touchstart', onPointerDown, { passive: true });
+  window.addEventListener('touchmove', onPointerMove, { passive: false });
+  window.addEventListener('touchend', onPointerUp);
+  window.addEventListener('touchcancel', onPointerUp);
+}
+
 function renderPlaylistCreateTracklist(query = '') {
   const trackChecklist = document.getElementById('playlist-track-checklist');
   const countLabel = document.getElementById('create-playlist-count-label');
@@ -1014,7 +1121,7 @@ function renderPlaylistCreateTracklist(query = '') {
     const isChecked = selectedSongIdsForPlaylist.has(song.id);
 
     return `
-      <label class="track-check-row" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 14px; cursor: pointer; user-select: none;">
+      <label class="track-check-row" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: ${isChecked ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255,255,255,0.03)'}; border-radius: 14px; cursor: pointer; user-select: none; transition: background 0.15s ease;">
         <input type="checkbox" value="${song.id}" class="playlist-song-checkbox" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: #22c55e; flex-shrink: 0; cursor: pointer;">
         <img src="${coverSrc}" style="width: 42px; height: 42px; border-radius: 10px; object-fit: cover; flex-shrink: 0;" alt="" onerror="this.src='${getDefaultCoverUrl()}'">
         <div style="flex: 1; min-width: 0;">
@@ -1026,13 +1133,18 @@ function renderPlaylistCreateTracklist(query = '') {
     `;
   }).join('');
 
+  setupDragToSelect(trackChecklist);
+
   trackChecklist.querySelectorAll('.playlist-song-checkbox').forEach(cb => {
     cb.addEventListener('change', (e) => {
       const songId = e.target.value;
+      const row = cb.closest('.track-check-row');
       if (e.target.checked) {
         selectedSongIdsForPlaylist.add(songId);
+        if (row) row.style.background = 'rgba(34, 197, 94, 0.08)';
       } else {
         selectedSongIdsForPlaylist.delete(songId);
+        if (row) row.style.background = 'rgba(255, 255, 255, 0.03)';
       }
       if (countLabel) countLabel.textContent = `${selectedSongIdsForPlaylist.size} lagu dipilih`;
     });
