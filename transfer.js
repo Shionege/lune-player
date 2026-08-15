@@ -27,11 +27,16 @@ class PeerTransferEngine {
    * Start Receiver Mode (generates PIN code)
    */
   startReceiverMode() {
-    if (this.peer) this.peer.destroy();
+    if (this.peer) {
+      try { this.peer.destroy(); } catch (e) {}
+    }
 
     const pin = this.generate6DigitPin();
     this.currentPin = pin;
     const peerId = `anywhere-pwa-${pin}`;
+
+    // Immediately trigger onPinGenerated so PIN is displayed instantly!
+    if (this.onPinGenerated) this.onPinGenerated(this.currentPin);
 
     if (!window.Peer) {
       if (this.onError) this.onError("PeerJS library not loaded. Ensure internet or cache is available.");

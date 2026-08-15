@@ -1456,6 +1456,7 @@ function renderSheetQueueTracklist() {
    ========================================================================== */
 function initTransferEvents() {
   const pinDisplay = document.getElementById('receiver-pin');
+  const btnRefreshPin = document.getElementById('btn-refresh-pin');
   const statusText = document.getElementById('p2p-status-text');
   const progressContainer = document.getElementById('p2p-progress-container');
   const progressFill = document.getElementById('p2p-progress-fill');
@@ -1470,6 +1471,23 @@ function initTransferEvents() {
   peerTransfer.onPinGenerated = (pin) => {
     if (pinDisplay) pinDisplay.textContent = pin;
   };
+
+  // Display current PIN immediately if already generated
+  if (peerTransfer.currentPin && pinDisplay) {
+    pinDisplay.textContent = peerTransfer.currentPin;
+  } else {
+    const initialPin = peerTransfer.startReceiverMode();
+    if (pinDisplay && initialPin) pinDisplay.textContent = initialPin;
+  }
+
+  // Refresh PIN button click handler
+  if (btnRefreshPin) {
+    btnRefreshPin.addEventListener('click', () => {
+      const freshPin = peerTransfer.startReceiverMode();
+      if (pinDisplay && freshPin) pinDisplay.textContent = freshPin;
+      if (statusText) statusText.textContent = "🔄 PIN baru berhasil dibuat!";
+    });
+  }
 
   peerTransfer.onPeerConnected = () => {
     if (statusText) statusText.textContent = "🟢 P2P Connected to peer!";
